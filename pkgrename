@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# Renames PS4 PKG files based on param.sfo information and predefined patterns.
+# Requires script "sfo" (https://github.com/hippie68/sfo) in $PATH.
+
+# How the filename should look like:
+pattern='$gamename [$gametype] [$title_id]$group.pkg'
+# Possible variables: gamename, gametype, group
+# Plus SFO strings: app_ver, category, content_id, title, title_id, version
+
+# Customize these lines for your needs:
+customize() {
+  [[ $group != "" ]] && group=" [$group]" # Add brackets when group not empty
+  case "$category" in
+    ac) gametype="DLC" ;;
+    gd) gametype="BASE GAME" ;;
+    gp) gametype="UPDATE v${app_ver#0}" ;;
+  esac
+}
+
+#######################
+# Script starts below
+
+[[ $1 == "" ]] && set -- '.' # Use current directory if no arguments given
+
+cleanup() {
+  echo "Script aborted."
+  exit
+}
+
+trap '{ echo; cleanup; }' SIGINT
+
+# $1: message, $2: allowed characters
+userinput_char() {
+  local char
+  while read -e -t 0.01; do :; done
+  while [[ $char != ["$2"] ]]; do
+    read -p "$1 " -n 1 char
+  done
+  echo "$char"
+}
+
+# https://www.ntfs.com/exfat-filename-dentry.htm
+convert_to_exfat_filename() {
+  echo "${1//[&:\\|\/\"<>*]/_}"
+}
+
+lowercase(){
+  gamename=$(echo "${gamename,,}" | sed -e 's/^./\U&/g' -e 's/[ -]./\U&/g' \
+    -e 's/:./\U&/g' -e 's/ \(And\|Of\|Of An\|Of The\|And The\) /\L&/')
+}
+
+# Accepts a PKG file and renames it
+pkgrename() {
+  local gamename gameversion title_id sfoindex sfo newfilename group i x
+  echo "${1##*/}"
+  while IFS= read -r line; do
+    case "${line%%=*}" in
+      APP_VER) app_ver=${line#*=} ;; # Patch version
+      CATEGORY) category=${line#*=} ;;
+      CONTENT_ID) content_id=${line#*=} ;;
+      TITLE) title=${line#*=} ;;
+      TITLE_ID) title_id=${line#*=} ;;
+      VERSION) version=${line#*=} ;; # Master version
+    esac
+  done < <(sfo "$1")
+  # Various game name changes
+  gamename=$title
+  gamename=${gamename//[®™]/}
+  gamename=${gamename//:/ }
+  gamename=${gamename//  / }
+  gamename=${gamename//–/-}
+  gamename=${gamename//’/\'}
+  gamename=${gamename//＆/&}
+  # Remove irregular whitespace
+  gamename=$(echo "$gamename" | sed -e 's/\xc2\xa0/ /')
+  # Change game names that are in capital letters
+  if [[ $gamename != *[a-z]* && ${#gamename} -gt 8 ]]; then
+    lowercase
+  else
+    for ((i=0,x=0;i<${#gamename};i++)); do
+      if [[ ${gamename:$i:1} == [A-Z] ]]; then
+       ((x++))
+      elif [[ ${gamename:$i:1} == " " ]]; then
+        x=0
+      fi
+      if [[ $x -gt 4 ]]; then # Don't touch small names like XCOM, WWE 2K20, etc.
+        lowercase
+        break
+      fi
+    done
+  fi
+  # Intentionally placed after capital letter conversion
+  gamename="${gamename//&/and}"
+  # Change roman numbers to capital letters; remove annoying stuff
+  gamename=$(echo "$gamename" | sed -e 's/ \(Ii\|Iii\|Iv\|Vi\|Vii\|Viii\|Ix\|Xi\|Xii\|Xii\|Xiv\|Xv\|Xvi\|Xvii\|Xviii\)\( \|$\)/\U&/g')
+  # Remove common watermarks
+  gamename=$(echo "$gamename" | sed -e 's/ by TKJ13//' -e 's/ (by PSnext.ru)//')
+  # Check for release groups
+  case "${1,,}" in
+    *[^a-z]blz[^a-z]*|*[^a-z]blaze[^a-z]*) group="BlaZe" ;;
+    *[^a-z]caf[^a-z]*) group="CAF" ;;
+    *[^a-z]darkmoon[^a-z]*) group="DarKmooN" ;;
+    *[^a-z]duplex[^a-z]*) group="DUPLEX" ;;
+    *[^a-z]gcmr[^a-z]*) group="GCMR" ;;
+    *[^a-z]hoodlum[^a-z]*) group="HOODLUM" ;;
+    *[^a-z]hr[^a-z]*) group="HR" ;;
+    *[^a-z]jrp[^a-z]*) group="JRP" ;;
+    *[^a-z]kotf[^a-z]*) group="KOTF" ;;
+    *[^a-z]lfc[^a-z]*|*[^a-z]lightforce[^a-z]*) group="LiGHTFORCE" ;;
+    *[^a-z]marvtm[^a-z]*) group="MarvTM" ;;
+    *[^a-z]moemoe[^a-z]*) group="MOEMOE" ;;
+    *[^a-z]playable[^a-z]*) group="Playable" ;;
+    *[^a-z]prelude[^a-z]*) group="PRELUDE" ;;
+    *[^a-z]respawn*) group="RESPAWN" ;;
+    *[^a-z]tcd[^a-z]*) group="TCD" ;;
+    *[^a-z]unlimited[^a-z]*) group="UNLiMiTED" ;;
+  esac
+  customize
+  newfilename=$(convert_to_exfat_filename "$(eval echo $pattern)")
+  echo "$newfilename"
+  if [[ $newfilename == "${1##*/}" ]]; then
+    echo "Nothing to do."
+  elif [[ $rename_all == true ]]; then
+    mv "$1" "$(dirname "$1")/$newfilename"
+  else
+    local char=$(userinput_char "Rename? [Y]es/[N]o/[A]ll/[Q]uit" ynaq)
+    echo
+    case "$char" in
+      y) mv "$1" "$(dirname "$1")/$newfilename" ;;
+      a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true ;;
+      q) cleanup ;;
+    esac
+  fi
+  echo
+}
+
+while [[ $1 != "" ]]; do
+  if [[ -d "$1" ]]; then
+    while IFS= read -r -d $'\0' pkg <&3; do
+      pkgrename "$pkg"
+    done 3< <(find "$1" -maxdepth 1 -iname '*.pkg' -type f -print0 | sort -z)
+  elif [[ -f "$1" && ${1,,} == *.pkg ]]; then
+    pkgrename "$1"
+  fi
+  shift
+done
