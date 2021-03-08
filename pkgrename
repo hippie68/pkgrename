@@ -3,29 +3,65 @@
 # Requires script "sfo" (https://github.com/hippie68/sfo) in $PATH.
 
 # How the filename should look like:
-pattern='$gamename [$gametype] [$title_id]$group.pkg'
-# Possible variables: gamename, gametype, group
-# Plus SFO strings: app_ver, category, content_id, title, title_id, version
+pattern='$title [$category] [$title_id]$releasegroup.pkg'
+# Possible variables: title, category, releasegroup
+# Plus original SFO strings: app_ver, content_id, title_id, version
 
 # Customize these lines for your needs:
 customize() {
-  [[ $group != "" ]] && group=" [$group]" # Add brackets when group not empty
-  case "$category" in
-    ac) gametype="DLC" ;;
-    gd) gametype="BASE GAME" ;;
-    gp) gametype="UPDATE v${app_ver#0}" ;;
-  esac
+  # Various title changes
+  title=${title//[®™]/}
+  title=${title//–/-}
+  title=${title//’/\'}
+  title=${title//＆/&}
+  # Remove irregular whitespace (may look like a regular space here, but isn't)
+  title=${title// / }
+  # How different categories should look like:
+  category_game="BASE GAME"
+  category_patch="UPDATE v${app_ver#0}"
+  category_dlc="DLC"
+  # Add brackets when releasegroup not empty:
+  [[ $releasegroup != "" ]] && releasegroup=" [$releasegroup]"
   # Uncomment this if you want exFAT placeholders for : and & to disappear:
-    # gamename=${gamename//:/}; gamename=${gamename//  / }
-    # if [[ $gamename == *[a-z]* ]]; then
-    #   gamename=${gamename// & / and }
-    # else
-    #   gamename=${gamename// & / AND }
-    # fi
+  #title=${title//:/}; title=${title//  / }
+  #if [[ $title == *[a-z]* ]]; then
+  #  title=${title// & / and }
+  #else
+  #  title=${title// & / AND }
+  #fi
 }
 
 #######################
 # Script starts below
+
+show_usage() {
+  echo "Usage: ${0##*/} [-hs] [file/folder ...]" >&2
+}
+
+show_help() {
+  show_usage 2>&1
+  echo
+  echo "  Automatically renames PKG files based on customizable patterns."
+  echo "  Customization takes place inside the script file."
+  echo "  If no files or folders are specified, the current directory will be used."
+  echo
+  echo "  Options:"
+  echo "    -h  Display this help info"
+  echo "    -s  Search the PS Store for hopefully better titles (is super slow)."
+  exit
+}
+
+# Parse command line options
+while [[ $1 == "-"?* ]]; do
+  for ((i=1;i<${#1};i++)); do
+    case ${1:$i:1} in
+      h) show_help ;;
+      s) search_ps_store=true ;;
+      *) show_usage; exit 1 ;;
+    esac
+  done
+  shift
+done
 
 [[ $1 == "" ]] && set -- '.' # Use current directory if no arguments given
 
@@ -36,11 +72,12 @@ cleanup() {
 
 trap '{ echo; cleanup; }' SIGINT
 
-# $1: message, $2: allowed characters
+# Prints a message and reads user input until input is valid
+# $1: Message, $2: Allowed characters
 userinput_char() {
   local char
   while read -e -t 0.01; do :; done
-  while [[ $char != ["$2"] ]]; do
+  while [[ $char != [$2] ]]; do
     read -p "$1 " -n 1 char
   done
   echo "$char"
@@ -51,49 +88,68 @@ convert_to_exfat_filename() {
   echo "${1//[&:\\|\/\"<>*]/_}"
 }
 
+# Optionally searches the PS Store for better titles (option -s)
+cusa_search() {
+  case $content_id in
+    UP*) url="https://store.playstation.com/en-us/product/$content_id" ;;
+    EP*) url="https://store.playstation.com/en-gb/product/$content_id" ;;
+    JP*) url="https://store.playstation.com/ja-jp/product/$content_id" ;;
+    *) return ;;
+  esac
+  cusa_search_result=$(curl --silent "$url" \
+    | grep -Po -m1 '<title>\K[^<]*(?=</title>)')
+}
+
 # Accepts a PKG file and renames it
 pkgrename() {
-  local gamename gameversion title_id sfoindex sfo newfilename group i x
+  local app_ver category content_id title title_id version releasegroup \
+    newfilename cusa_search_result
   echo "${1##*/}"
   while IFS= read -r line; do
     case "${line%%=*}" in
       APP_VER) app_ver=${line#*=} ;; # Patch version
-      CATEGORY) category=${line#*=} ;;
-      CONTENT_ID) content_id=${line#*=} ;;
-      TITLE) title=${line#*=} ;;
-      TITLE_ID) title_id=${line#*=} ;;
+      CATEGORY) category=${line#*=} ;; # ac: DLC, gd: Game, gp: Patch
+      CONTENT_ID) content_id=${line#*=} ;; # https://www.psdevwiki.com/ps4/Content_ID
+      TITLE) title=${line#*=} ;; # Game/Patch/DLC name
+      TITLE_ID) title_id=${line#*=} ;; # CUSAXXXXX
       VERSION) version=${line#*=} ;; # Master version
     esac
   done < <(sfo "$1")
-  gamename=$title
-  # Various game name changes
-  gamename=${gamename//[®™]/}
-  gamename=${gamename//–/-}
-  gamename=${gamename//’/\'}
-  gamename=${gamename//＆/&}
-  # Remove irregular whitespace (may look like a regular space here, but isn't)
-  gamename=${gamename// / }
   # Check file name for release groups
   case "${1,,}" in
-    *[^a-z]blz[^a-z]*|*[^a-z]blaze[^a-z]*) group="BlaZe" ;;
-    *[^a-z]caf[^a-z]*) group="CAF" ;;
-    *[^a-z]darkmoon[^a-z]*) group="DarKmooN" ;;
-    *[^a-z]duplex[^a-z]*) group="DUPLEX" ;;
-    *[^a-z]gcmr[^a-z]*) group="GCMR" ;;
-    *[^a-z]hoodlum[^a-z]*) group="HOODLUM" ;;
-    *[^a-z]hr[^a-z]*) group="HR" ;;
-    *[^a-z]jrp[^a-z]*) group="JRP" ;;
-    *[^a-z]kotf[^a-z]*) group="KOTF" ;;
-    *[^a-z]lfc[^a-z]*|*[^a-z]lightforce[^a-z]*) group="LiGHTFORCE" ;;
-    *[^a-z]marvtm[^a-z]*) group="MarvTM" ;;
-    *[^a-z]moemoe[^a-z]*) group="MOEMOE" ;;
-    *[^a-z]playable[^a-z]*) group="Playable" ;;
-    *[^a-z]prelude[^a-z]*) group="PRELUDE" ;;
-    *[^a-z]respawn*) group="RESPAWN" ;;
-    *[^a-z]tcd[^a-z]*) group="TCD" ;;
-    *[^a-z]unlimited[^a-z]*) group="UNLiMiTED" ;;
+    *[^a-z]blz[^a-z]*|*[^a-z]blaze[^a-z]*) releasegroup="BlaZe" ;;
+    *[^a-z]caf[^a-z]*) releasegroup="CAF" ;;
+    *[^a-z]darkmoon[^a-z]*) releasegroup="DarKmooN" ;;
+    *[^a-z]duplex[^a-z]*) releasegroup="DUPLEX" ;;
+    *[^a-z]gcmr[^a-z]*) releasegroup="GCMR" ;;
+    *[^a-z]hoodlum[^a-z]*) releasegroup="HOODLUM" ;;
+    *[^a-z]hr[^a-z]*) releasegroup="HR" ;;
+    *[^a-z]jrp[^a-z]*) releasegroup="JRP" ;;
+    *[^a-z]kotf[^a-z]*) releasegroup="KOTF" ;;
+    *[^a-z]lfc[^a-z]*|*[^a-z]lightforce[^a-z]*) releasegroup="LiGHTFORCE" ;;
+    *[^a-z]marvtm[^a-z]*) releasegroup="MarvTM" ;;
+    *[^a-z]moemoe[^a-z]*) releasegroup="MOEMOE" ;;
+    *[^a-z]playable[^a-z]*) releasegroup="Playable" ;;
+    *[^a-z]prelude[^a-z]*) releasegroup="PRELUDE" ;;
+    *[^a-z]respawn[^a-z]*) releasegroup="RESPAWN" ;;
+    *[^a-z]tcd[^a-z]*) releasegroup="TCD" ;;
+    *[^a-z]unlimited[^a-z]*) releasegroup="UNLiMiTED" ;;
   esac
+  # Optionally search the PS Store for hopefully better titles
+  if [[ $search_ps_store == true ]]; then
+    cusa_search
+    if [[ $cusa_search_result == "" ]]; then
+      echo "PS Store title search failed." >&2
+    else
+      title=$cusa_search_result
+    fi
+  fi
   customize
+  case "$category" in
+    ac) category="$category_dlc" ;;
+    gd) category="$category_game" ;;
+    gp) category="$category_patch" ;;
+  esac
   newfilename=$(convert_to_exfat_filename "$(eval echo $pattern)")
   echo "$newfilename"
   if [[ $newfilename == "${1##*/}" ]]; then
