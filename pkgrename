@@ -35,7 +35,7 @@ customize() {
 # Script starts below
 
 show_usage() {
-  echo "Usage: ${0##*/} [-hs] [file/folder ...]" >&2
+  echo "Usage: ${0##*/} [-hrs] [file/directory ...]" >&2
 }
 
 show_help() {
@@ -43,19 +43,23 @@ show_help() {
   echo
   echo "  Automatically renames PKG files based on customizable patterns."
   echo "  Customization takes place inside the script file."
-  echo "  If no files or folders are specified, the current directory will be used."
+  echo "  If no files or directories are specified, the current directory will be used."
   echo
   echo "  Options:"
   echo "    -h  Display this help info"
-  echo "    -s  Search the PS Store for hopefully better titles (is super slow)."
+  echo "    -r  Traverse directories recursively"
+  echo "    -s  Search the PS Store for hopefully better titles"
   exit
 }
+
+find_option="-maxdepth 1"
 
 # Parse command line options
 while [[ $1 == "-"?* ]]; do
   for ((i=1;i<${#1};i++)); do
     case ${1:$i:1} in
       h) show_help ;;
+      r) find_option= ;;
       s) search_ps_store=true ;;
       *) show_usage; exit 1 ;;
     esac
@@ -172,7 +176,7 @@ while [[ $1 != "" ]]; do
   if [[ -d "$1" ]]; then
     while IFS= read -r -d $'\0' pkg <&3; do
       pkgrename "$pkg"
-    done 3< <(find "$1" -maxdepth 1 -iname '*.pkg' -type f -print0 | sort -z)
+    done 3< <(find "$1" $find_option -iname '*.pkg' -type f -print0 | sort -z)
   elif [[ -f "$1" && ${1,,} == *.pkg ]]; then
     pkgrename "$1"
   fi
