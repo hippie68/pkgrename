@@ -46,6 +46,7 @@ show_help() {
   echo "  If no files or directories are specified, the current directory will be used."
   echo
   echo "  Options:"
+  echo "    -f  Force prompt when file name matches pattern"
   echo "    -h  Display this help info"
   echo "    -r  Traverse directories recursively"
   echo "    -s  Search the PS Store for hopefully better titles"
@@ -58,6 +59,7 @@ find_option="-maxdepth 1"
 while [[ $1 == "-"?* ]]; do
   for ((i=1;i<${#1};i++)); do
     case ${1:$i:1} in
+      f) force_prompt=true ;;
       h) show_help ;;
       r) find_option= ;;
       s) search_ps_store=true ;;
@@ -156,16 +158,23 @@ pkgrename() {
   esac
   newfilename=$(convert_to_exfat_filename "$(eval echo $pattern)")
   echo "$newfilename"
-  if [[ $newfilename == "${1##*/}" ]]; then
+  if [[ $newfilename == "${1##*/}" && $force_prompt != true ]]; then
     echo "Nothing to do."
   elif [[ $rename_all == true ]]; then
     mv "$1" "$(dirname "$1")/$newfilename"
   else
-    local char=$(userinput_char "Rename? [Y]es/[N]o/[A]ll/[Q]uit" ynaq)
+    local char=$(userinput_char "Rename? [Y]es [N]o [A]ll [E]dit [Q]uit:" ynaeq)
     echo
     case "$char" in
       y) mv "$1" "$(dirname "$1")/$newfilename" ;;
       a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true ;;
+      e) read -i "$newfilename" -e userfilename
+         newfilename=$(convert_to_exfat_filename "$userfilename")
+         if [[ $newfilename != "$userfilename" ]]; then
+           echo "exFAT conversion   : $newfilename"
+         fi
+         mv "$1" "$(dirname "$1")/$newfilename"
+         ;;
       q) cleanup ;;
     esac
   fi
