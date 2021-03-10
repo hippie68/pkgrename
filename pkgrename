@@ -88,7 +88,8 @@ read_userinput() {
   local char
   while read -e -t 0.01; do true; done # Clear buffer
   while [[ ${char,,} != [$2] ]]; do
-    read -p "$1 " -n 1 char
+    read -p "$1" -n 1 char
+    while read -e -t 0.01; do true; done
     echo
   done
   userinput=${char,,}
@@ -158,7 +159,7 @@ pkgrename() {
     gd) category="$category_game" ;;
     gp) category="$category_patch" ;;
   esac
-  title_backup=$title # For [R]eload
+  title_backup=$title # For [R]eset
   while true; do
     newfilename=$(convert_to_exfat_filename "$(eval echo $pattern)")
     echo "$newfilename"
@@ -169,21 +170,21 @@ pkgrename() {
       mv "$1" "$(dirname "$1")/$newfilename"
       break
     else
-      read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eload [S]FO [Q]uit:" ynaeorsq
+      read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eset [C]hars [S]FO [Q]uit: " ynaeorcsq
       case "$userinput" in
         y) mv "$1" "$(dirname "$1")/$newfilename"; break ;;
         n) break ;;
         a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
-        e) read -i "$newfilename" -e userfilename
-           newfilename=$(convert_to_exfat_filename "$userfilename")
-           if [[ $newfilename != "$userfilename" ]]; then
-             echo "After exFAT conversion:"
-           fi
-           mv "$1" "$(dirname "$1")/$newfilename"
-           break
-           ;;
+        e) read -i "$title" -e title ;;
         o) online_search; customize_title ;;
         r) title=$title_backup ;;
+        c) special_chars=$(echo -n "$newfilename" | cat -A);
+           if [[ $special_chars != "$newfilename" ]]; then
+             echo "$special_chars <-- Special characters found"
+           else
+             echo "No special characters found."
+           fi
+           ;;
         s) echo; sfo "$1"; echo; ;;
         q) cleanup ;;
       esac
