@@ -7,21 +7,25 @@ pattern='$title [$category] [$title_id]$releasegroup.pkg'
 # Possible variables: title, category, releasegroup
 # Plus original SFO strings: app_ver, content_id, title_id, version
 
-# Customize these lines for your needs:
-customize() {
-  # Various title changes
+customize_title() {
   title=${title//[®™]/}
   title=${title//–/-}
   title=${title//’/\'}
   title=${title//＆/&}
   # Remove irregular whitespace (may look like a regular space here, but isn't)
   title=${title// / }
+}
+
+customize() {
+  customize_title
   # How different categories should look like:
   category_game="BASE GAME"
   category_patch="UPDATE v${app_ver#0}"
   category_dlc="DLC"
   # Add brackets when releasegroup not empty:
-  [[ $releasegroup != "" ]] && releasegroup=" [$releasegroup]"
+  if [[ $releasegroup != "" ]]; then
+    releasegroup=" [$releasegroup]"
+  fi
   # Uncomment this if you want exFAT placeholders for : and & to disappear:
   #title=${title//:/}; title=${title//  / }
   #if [[ $title == *[a-z]* ]]; then
@@ -104,7 +108,7 @@ online_search() {
     *) return ;;
   esac
   online_search_result=$(curl --silent "$url" \
-    | grep -Po -m1 '<title>\K[^<]*(?=</title>)')
+    | grep -Po -m1 '"@type":"Product","name":"\K[^"]*(?=")')
   if [[ $online_search_result == "" ]]; then
     echo "PS Store title search failed." >&2
   else
@@ -178,7 +182,7 @@ pkgrename() {
            mv "$1" "$(dirname "$1")/$newfilename"
            break
            ;;
-        o) online_search ;;
+        o) online_search; customize_title ;;
         r) title=$title_backup ;;
         s) echo; sfo "$1"; echo; ;;
         q) cleanup ;;
