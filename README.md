@@ -2,7 +2,7 @@
 Renames PS4 PKG files based on local param.sfo information and predefined patterns.
 Requires Bash script "sfo" (https://github.com/hippie68/sfo) in your $PATH environment variable.
 
-Usage: `pkgrename [-fhor] [file/directory ...]`
+Usage: `pkgrename [options] [file/directory ...]`
 
 Options:
 
