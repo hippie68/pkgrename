@@ -11,9 +11,9 @@ Options:
   -r  Traverse directories recursively"
 
 The script in action looks like this:
-`totally_not_helpful_filename.pkg
-Baldur's Gate and Baldur's Gate II_ Enhanced Editions [UPDATE v1.02] [CUSA15671].pkg
-Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eload [S]FO [Q]uit: `
+    totally_not_helpful_filename.pkg
+    Baldur's Gate and Baldur's Gate II_ Enhanced Editions [UPDATE v1.02] [CUSA15671].pkg
+    Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eload [S]FO [Q]uit: 
 
 For exFAT compatibility, certain characters are replaced.
 Further info on how to customize your file names is found inside the pkgrename script.
