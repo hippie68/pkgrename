@@ -11,6 +11,7 @@ Options:
   -r  Traverse directories recursively"
 
 The script in action looks like this:
+
     totally_not_helpful_filename.pkg
     Baldur's Gate and Baldur's Gate II_ Enhanced Editions [UPDATE v1.02] [CUSA15671].pkg
     Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eload [S]FO [Q]uit: 
