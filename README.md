@@ -4,10 +4,10 @@ Requires Bash script "sfo" (https://github.com/hippie68/sfo) in your $PATH envir
 
 Usage: `pkgrename [-fhor] [file/directory ...]`
 
-Options:
-  -f  Force prompt when file name matches pattern"
-  -h  Display this help info"
-  -o  Default to online search"
+Options:  
+  -f  Force prompt when file name matches pattern  
+  -h  Display this help info"  
+  -o  Default to online search"  
   -r  Traverse directories recursively"
 
 The script in action looks like this:
