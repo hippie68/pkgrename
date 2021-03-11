@@ -18,15 +18,16 @@ The script in action looks like this:
     Baldur's Gate and Baldur's Gate II_ Enhanced Editions [UPDATE v1.02] [CUSA15671].pkg
     Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eset [C]hars [S]FO [Q]uit: y
 
-- [Y]es Renames the file as seen
-- [N]o Skips the file and drops all changes
-- [A]ll Same as yes, but also for all future files
-- [E]dit Prompts to manually edit the title
-- [O]nline Searches the PS Store online for the current file's title information
-- [R]eload Reverts all changes
-- [C]hars Shows special characters, if still present
-- [S]FO Shows file's param.sfo information
-- [Q]uit Exits the script immediately
+- `[Y]es` Renames the file as seen
+- `[N]o` Skips the file and drops all changes
+- `[A]ll` Same as yes, but also all future files
+- `[E]dit` Prompts to manually edit the title
+- `[O]nline` Searches the PS Store online for the current file's title information
+- `[R]eload` Reverts all changes
+- `[L]ower` Converts the title to mixed case format
+- `[C]hars` Shows special characters, if still present
+- `[S]FO` Shows file's param.sfo information
+- `[Q]uit` Exits the script immediately
 
 For exFAT compatibility, certain characters are replaced.
 Further info on how to customize your file names is found inside the pkgrename script.
