@@ -16,7 +16,7 @@ The script in action looks like this:
     $ pkgrename
     totally_not_helpful_filename.pkg
     Baldur's Gate and Baldur's Gate II_ Enhanced Editions [UPDATE v1.02] [CUSA15671].pkg
-    Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eset [C]hars [S]FO [Q]uit: y
+    Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eset [L]ower [C]hars [S]FO [Q]uit: y
 
 - `[Y]es` Renames the file as seen
 - `[N]o` Skips the file and drops all changes
