@@ -170,7 +170,7 @@ pkgrename() {
       mv "$1" "$(dirname "$1")/$newfilename"
       break
     else
-      read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eset [C]hars [S]FO [Q]uit: " ynaeorcsq
+      read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [O]nline [R]eset [L]ower [C]hars [S]FO [Q]uit: " ynaeorlcsq
       case "$userinput" in
         y) mv "$1" "$(dirname "$1")/$newfilename"; break ;;
         n) break ;;
@@ -178,6 +178,10 @@ pkgrename() {
         e) read -i "$title" -e title ;;
         o) online_search; customize_title ;;
         r) title=$title_backup ;;
+        l) title=${title,,}
+           array=($title)
+           title=${array[@]~}
+           ;;
         c) special_chars=$(echo -n "$newfilename" | cat -A);
            if [[ $special_chars != "$newfilename" ]]; then
              echo "$special_chars <-- Special characters found"
