@@ -24,7 +24,7 @@ The script in action looks like this:
 - `[E]dit` Prompts to manually edit the title
 - `[M]ix` Converts the title to mixed case format
 - `[O]nline` Searches the PS Store online for the current file's title information
-- `[R]eload` Reverts all title changes
+- `[R]eset` Reverts all title changes
 - `[C]hars` Shows special characters, if still present
 - `[S]FO` Shows file's param.sfo information
 - `[Q]uit` Exits the script immediately
