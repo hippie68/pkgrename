@@ -29,5 +29,14 @@ The script in action looks like this:
 - `[S]FO` Shows file's param.sfo information
 - `[Q]uit` Exits the script immediately
 
-For exFAT compatibility, certain characters are replaced.
-Further info on how to customize your file names is found inside the pkgrename script.
+You can easily customize the naming scheme in the customization section at the top of the script:
+
+    pattern='$title [$category] [$title_id].pkg'
+
+Possible variables: title, category, releasegroup                              
+Plus original SFO strings: app_ver, content_id, title_id, version  
+
+You can fully customize every aspect of the file name.
+Further information is found inside the script's customization section.
+
+For exFAT compatibility, by default certain characters are replaced with underscores (which is also customizable).
