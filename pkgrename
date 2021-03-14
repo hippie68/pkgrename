@@ -181,10 +181,7 @@ pkgrename() {
         y) mv "$1" "$(dirname "$1")/$newfilename"; break ;;
         n) break ;;
         a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
-        e)
-          echo "Enter new title:"
-          read -i "$title" -e title
-          ;;
+        e) echo "Enter new title:"; read -i "$title" -e title ;;
         m)
           title=${title,,}
           array=($title)
@@ -192,19 +189,17 @@ pkgrename() {
           echo "Converted title to mixed-case style."
           ;;
         o) online_search; customize_title ;;
-        r)
-          title=$title_backup
-          echo "All changes reset."
-          ;;
+        r) title=$title_backup; echo "All changes reset." ;;
         c)
           special_chars=$(echo -n "$newfilename" | cat -A);
           if [[ $special_chars != "$newfilename" ]]; then
-            echo "$special_chars <-- Special characters found"
+            echo "Special characters found:"
+            echo "$special_chars"
           else
             echo "No special characters found."
           fi
           ;;
-        s) echo; sfo "$1"; echo;;
+        s) echo; sfo "$1"; echo ;;
         q) cleanup ;;
       esac
     fi
