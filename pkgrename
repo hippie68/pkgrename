@@ -2,31 +2,26 @@
 # Renames PS4 PKG files based on param.sfo information and predefined patterns.
 # Requires script "sfo" (https://github.com/hippie68/sfo) in $PATH.
 
+#########################
+# Customization section:
+
 # How the filename should look like:
 pattern='$title [$category] [$title_id]$releasegroup.pkg'
 # Possible variables: title, category, releasegroup
 # Plus original SFO strings: app_ver, content_id, title_id, version
 
+# Replacement for characters that would be invalid on an exFAT file system:
+exfat_placeholder=_
+
+# Do title customization here:
+# title=${title//SEARCH/REPLACE}
 customize_title() {
   title=${title//[®™]/}
   title=${title//–/-}
   title=${title//’/\'}
   title=${title//＆/&}
-  # Remove irregular whitespace (may look like a regular space here, but isn't)
-  title=${title// / }
-}
-
-customize() {
-  customize_title
-  # How different categories should look like:
-  category_game="BASE GAME"
-  category_patch="UPDATE v${app_ver#0}"
-  category_dlc="DLC"
-  # Add brackets when releasegroup not empty:
-  if [[ $releasegroup != "" ]]; then
-    releasegroup=" [$releasegroup]"
-  fi
-  # Uncomment this if you want exFAT placeholders for : and & to disappear:
+  title=${title// / } # Remove irregular whitespace with regular one
+  # Uncomment these lines if you want placeholders for : and & to disappear:
   #title=${title//:/}; title=${title//  / }
   #if [[ $title == *[a-z]* ]]; then
   #  title=${title// & / and }
@@ -35,8 +30,21 @@ customize() {
   #fi
 }
 
+# Do all other file name customization here:
+customize() {
+  customize_title
+  # How different categories should look like:
+  category_game="BASE GAME"
+  category_patch="UPDATE v${app_ver#0}"
+  category_dlc="DLC"
+  # Add space and brackets when releasegroup not empty:
+  if [[ $releasegroup != "" ]]; then
+    releasegroup=" [$releasegroup]"
+  fi
+}
+
 #######################
-# Script starts below
+# Script starts below:
 
 show_usage() {
   echo "Usage: ${0##*/} [-fhor] [file/directory ...]" >&2
@@ -44,16 +52,16 @@ show_usage() {
 
 show_help() {
   show_usage 2>&1
-  echo
-  echo "  Automatically renames PKG files based on customizable patterns."
-  echo "  Customization takes place inside the script file."
-  echo "  If no files or directories are specified, the current directory will be used."
-  echo
-  echo "  Options:"
-  echo "    -f  Force prompt when file name matches pattern"
-  echo "    -h  Display this help info"
-  echo "    -o  Default to online search"
-  echo "    -r  Traverse directories recursively"
+  echo "
+  Automatically renames PKG files based on customizable patterns.
+  Customization takes place inside the script file.
+  If no files or directories are specified, the current directory will be used.
+
+  Options:
+    -f  Force prompt when file name matches pattern
+    -h  Display this help info
+    -o  Default to online search
+    -r  Traverse directories recursively"
   exit
 }
 
@@ -65,8 +73,8 @@ while [[ $1 == "-"?* ]]; do
     case ${1:$i:1} in
       f) force_prompt=true ;;
       h) show_help ;;
-      r) find_option= ;;
       o) search_ps_store=true ;;
+      r) find_option= ;;
       *) show_usage; exit 1 ;;
     esac
   done
@@ -93,11 +101,6 @@ read_userinput() {
     echo
   done
   userinput=${char,,}
-}
-
-# https://www.ntfs.com/exfat-filename-dentry.htm
-convert_to_exfat_filename() {
-  echo "${1//[&:\\|\/\"<>*]/_}"
 }
 
 # Optionally searches the PS Store for better titles (option -s)
@@ -152,16 +155,18 @@ pkgrename() {
     *[^a-z]tcd[^a-z]*) releasegroup="TCD" ;;
     *[^a-z]unlimited[^a-z]*) releasegroup="UNLiMiTED" ;;
   esac
-  [[ $search_ps_store == true ]] && online_search # Option -o
+  [[ $search_ps_store == true ]] && online_search # This line is option -o
   customize
   case "$category" in
     ac) category="$category_dlc" ;;
     gd) category="$category_game" ;;
     gp) category="$category_patch" ;;
   esac
-  title_backup=$title # For [R]eset
+  title_backup=$title # Backup for possible use of [R]eset
   while true; do
-    newfilename=$(convert_to_exfat_filename "$(eval echo $pattern)")
+    newfilename=$(eval echo $pattern)
+    # exFAT compatibility (https://www.ntfs.com/exfat-filename-dentry.htm)
+    newfilename=${newfilename//[&:\\|\/\"<>*]/$exfat_placeholder}
     echo "$newfilename"
     if [[ $newfilename == "${1##*/}" && $force_prompt != true ]]; then
       echo "Nothing to do."
@@ -176,19 +181,21 @@ pkgrename() {
         n) break ;;
         a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
         e) read -i "$title" -e title ;;
-        m) title=${title,,}
-           array=($title)
-           title=${array[@]~}
-           ;;
+        m)
+          title=${title,,}
+          array=($title)
+          title=${array[@]~} # Uppercase for first char of every word
+          ;;
         o) online_search; customize_title ;;
         r) title=$title_backup ;;
-        c) special_chars=$(echo -n "$newfilename" | cat -A);
-           if [[ $special_chars != "$newfilename" ]]; then
-             echo "$special_chars <-- Special characters found"
-           else
-             echo "No special characters found."
-           fi
-           ;;
+        c)
+          special_chars=$(echo -n "$newfilename" | cat -A);
+          if [[ $special_chars != "$newfilename" ]]; then
+            echo "$special_chars <-- Special characters found"
+          else
+            echo "No special characters found."
+          fi
+          ;;
         s) echo; sfo "$1"; echo; ;;
         q) cleanup ;;
       esac
@@ -199,7 +206,8 @@ pkgrename() {
 
 while [[ $1 != "" ]]; do
   if [[ -d "$1" ]]; then
-    while IFS= read -r -d $'\0' -u 3 pkg; do # File descriptor 3 because: nested reads
+    # File descriptor 3 because of nested reads (function "read_userinput")
+    while IFS= read -r -d $'\0' -u 3 pkg; do
       pkgrename "$pkg"
     done 3< <(find "$1" $find_option -iname '*.pkg' -type f -print0 | sort -z)
   elif [[ -f "$1" && ${1,,} == *.pkg ]]; then
