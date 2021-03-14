@@ -14,13 +14,13 @@ pattern='$title [$category] [$title_id]$releasegroup.pkg'
 exfat_placeholder=_
 
 # Do title customization here:
-# title=${title//SEARCH/REPLACE}
+# e.g. title=${title//SEARCH/REPLACE}
 customize_title() {
   title=${title//[®™]/}
   title=${title//–/-}
   title=${title//’/\'}
   title=${title//＆/&}
-  title=${title// / } # Remove irregular whitespace with regular one
+  title=${title// / } # Replace irregular whitespace with regular one
   # Uncomment these lines if you want placeholders for : and & to disappear:
   #title=${title//:/}; title=${title//  / }
   #if [[ $title == *[a-z]* ]]; then
@@ -32,7 +32,6 @@ customize_title() {
 
 # Do all other file name customization here:
 customize() {
-  customize_title
   # How different categories should look like:
   category_game="BASE GAME"
   category_patch="UPDATE v${app_ver#0}"
@@ -114,9 +113,10 @@ online_search() {
   online_search_result=$(curl --silent "$url" \
     | grep -Po -m1 '"@type":"Product","name":"\K[^"]*(?=")')
   if [[ $online_search_result == "" ]]; then
-    echo "PS Store title search failed." >&2
+    echo "Online search failed." >&2
   else
     title=$online_search_result
+    echo "Online search successful."
   fi
 }
 
@@ -156,6 +156,7 @@ pkgrename() {
     *[^a-z]unlimited[^a-z]*) releasegroup="UNLiMiTED" ;;
   esac
   [[ $search_ps_store == true ]] && online_search # This line is option -o
+  customize_title
   customize
   case "$category" in
     ac) category="$category_dlc" ;;
@@ -180,14 +181,21 @@ pkgrename() {
         y) mv "$1" "$(dirname "$1")/$newfilename"; break ;;
         n) break ;;
         a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
-        e) read -i "$title" -e title ;;
+        e)
+          echo "Enter new title:"
+          read -i "$title" -e title
+          ;;
         m)
           title=${title,,}
           array=($title)
-          title=${array[@]~} # Uppercase for first char of every word
+          title=${array[@]~} # Uppercase for first letter of every word
+          echo "Converted title to mixed-case style."
           ;;
         o) online_search; customize_title ;;
-        r) title=$title_backup ;;
+        r)
+          title=$title_backup
+          echo "All changes reset."
+          ;;
         c)
           special_chars=$(echo -n "$newfilename" | cat -A);
           if [[ $special_chars != "$newfilename" ]]; then
@@ -196,7 +204,7 @@ pkgrename() {
             echo "No special characters found."
           fi
           ;;
-        s) echo; sfo "$1"; echo; ;;
+        s) echo; sfo "$1"; echo;;
         q) cleanup ;;
       esac
     fi
