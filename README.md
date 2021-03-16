@@ -20,7 +20,7 @@ The script in action looks like this:
 
 - `[Y]es` Renames the file as seen
 - `[N]o` Skips the file and drops all changes
-- `[A]ll` Same as yes, but also all future files
+- `[A]ll` Same as yes, but also for all future files
 - `[E]dit` Prompts to manually edit the title
 - `[M]ix` Converts the title to mixed case format
 - `[O]nline` Searches the PS Store online for the current file's title information
