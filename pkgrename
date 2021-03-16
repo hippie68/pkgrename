@@ -6,8 +6,8 @@
 # Customization section:
 
 # How the filename should look like:
-pattern='$title [$category] [$title_id]$releasegroup.pkg'
-# Possible variables: title, category, releasegroup
+pattern='$title [$category] [$title_id] [$releasegroup].pkg'
+# Possible variables: title, category, firmware, releasegroup
 # Plus original SFO strings: app_ver, content_id, title_id, version
 
 # Replacement for characters that would be invalid on an exFAT file system:
@@ -20,7 +20,8 @@ customize_title() {
   title=${title//–/-}
   title=${title//’/\'}
   title=${title//＆/&}
-  title=${title// / } # Replace irregular whitespace with regular one
+  # Replace irregular whitespace with regular one:
+  title=${title// / }
   # Uncomment these lines if you want placeholders for : and & to disappear:
   #title=${title//:/}; title=${title//  / }
   #if [[ $title == *[a-z]* ]]; then
@@ -33,13 +34,11 @@ customize_title() {
 # Do all other file name customization here:
 customize() {
   # How different categories should look like:
-  category_game="BASE GAME"
-  category_patch="UPDATE v${app_ver#0}"
+  category_game="Game"
+  category_patch="Update v${app_ver#0}"
   category_dlc="DLC"
-  # Add space and brackets when releasegroup not empty:
-  if [[ $releasegroup != "" ]]; then
-    releasegroup=" [$releasegroup]"
-  fi
+  # Optional: characters to remove should a variable be empty:
+  outer_shell="[]"
 }
 
 #######################
@@ -120,23 +119,50 @@ online_search() {
   fi
 }
 
+# Renames a file on case-insensitive filesystems like exFAT
+rename_file() {
+  if [[ -f "$2" ]]; then
+   if [[ -f "$1.pkgrename" ]]; then
+     echo "The old temporary file \"$1.pkgrename\" prevents renaming." >&2
+     echo "Please fix this and then try again." >&2
+   else
+     mv "$1" "$1.pkgrename" && mv "$1.pkgrename" "$2"
+   fi
+  else
+    mv "$1" "$2"
+  fi
+}
+
 # Accepts a PKG file and renames it
 pkgrename() {
-  local app_ver category content_id title title_id version releasegroup \
-    newfilename online_search_result
+  local app_ver category content_id firmware newfilename online_search_result \
+    pubtoolinfo releasegroup title title_id version
   echo "${1##*/}"
+
+  # Run external "sfo" script to get param.sfo variables
   while IFS= read -r line; do
     case "${line%%=*}" in
       APP_VER) app_ver=${line#*=} ;; # Patch version
       CATEGORY) category=${line#*=} ;; # ac: DLC, gd: Game, gp: Patch
       CONTENT_ID) content_id=${line#*=} ;; # https://www.psdevwiki.com/ps4/Content_ID
+      PUBTOOLINFO) pubtoolinfo=${line#*=} ;;
       TITLE) title=${line#*=} ;; # Game/Patch/DLC name
       TITLE_ID) title_id=${line#*=} ;; # CUSAXXXXX
       VERSION) version=${line#*=} ;; # Master version
     esac
   done < <(sfo "$1")
+
+  # Create "firmware" variable (stays empty if PKG is DLC)
+  if [[ $category == +(gd|gp) ]]; then
+    firmware=${pubtoolinfo#*sdk_ver=}
+    firmware=${firmware%%,*}
+    firmware=${firmware:0:2}.${firmware:2:2}
+    firmware=${firmware#0}
+  fi
+
   # Check file name for release groups
-  case "${1,,}" in
+  case ${1,,} in
+    *[^a-z]bigbluebox[^a-z]*) releasegroup="BigBlueBox" ;;
     *[^a-z]blz[^a-z]*|*[^a-z]blaze[^a-z]*) releasegroup="BlaZe" ;;
     *[^a-z]caf[^a-z]*) releasegroup="CAF" ;;
     *[^a-z]darkmoon[^a-z]*) releasegroup="DarKmooN" ;;
@@ -146,41 +172,66 @@ pkgrename() {
     *[^a-z]hr[^a-z]*) releasegroup="HR" ;;
     *[^a-z]jrp[^a-z]*) releasegroup="JRP" ;;
     *[^a-z]kotf[^a-z]*) releasegroup="KOTF" ;;
+    *[^a-z]levelup[^a-z]*) releasegroup="LevelUp" ;;
     *[^a-z]lfc[^a-z]*|*[^a-z]lightforce[^a-z]*) releasegroup="LiGHTFORCE" ;;
     *[^a-z]marvtm[^a-z]*) releasegroup="MarvTM" ;;
     *[^a-z]moemoe[^a-z]*) releasegroup="MOEMOE" ;;
     *[^a-z]playable[^a-z]*) releasegroup="Playable" ;;
     *[^a-z]prelude[^a-z]*) releasegroup="PRELUDE" ;;
+    *[^a-z]protocol[^a-z]*) releasegroup="PROTOCOL" ;;
     *[^a-z]respawn[^a-z]*) releasegroup="RESPAWN" ;;
+    *[^a-z]sharphd[^a-z]*) releasegroup="SharpHD" ;;
     *[^a-z]tcd[^a-z]*) releasegroup="TCD" ;;
     *[^a-z]unlimited[^a-z]*) releasegroup="UNLiMiTED" ;;
+    *[^a-z]walmart[^a-z]*) releasegroup="WaLMaRT" ;;
+    *[^a-z]waysted[^a-z]*) releasegroup="WaYsTeD" ;;
+    # Other releases
+    *[^a-z]arczi[^a-z]*) releasegroup="By Arczi" ;;
+    *[^a-z]opoisso893[^a-z]*) releasegroup="By OPOISSO893" ;;
+    *[^a-z]cyb1k[^a-z]*) releasegroup="By CyB1K" ;;
   esac
-  [[ $search_ps_store == true ]] && online_search # This line is option -o
+
+  # This line is option "-o", must be run before title customization
+  [[ $search_ps_store == true ]] && online_search
+
+  # Apply user's customization
   customize_title
+  title_backup=$title # Backup for possible use of [R]eset
   customize
   case "$category" in
     ac) category="$category_dlc" ;;
     gd) category="$category_game" ;;
     gp) category="$category_patch" ;;
+    *) category="Unknown category" ;;
   esac
-  title_backup=$title # Backup for possible use of [R]eset
+
+  # Interactive loop
   while true; do
+    # Apply user's pattern
     newfilename=$(eval echo $pattern)
-    # exFAT compatibility (https://www.ntfs.com/exfat-filename-dentry.htm)
+
+    # Remove outer shell characters and whitespace caused by empty variables
+    newfilename=${newfilename//$outer_shell/}
+    newfilename=${newfilename//  / }
+    newfilename=${newfilename/ ./.}
+
+    # Encforce exFAT compatibility
+    # (https://www.ntfs.com/exfat-filename-dentry.htm)
     newfilename=${newfilename//[&:\\|\/\"<>*]/$exfat_placeholder}
+
     echo "$newfilename"
     if [[ $newfilename == "${1##*/}" && $force_prompt != true ]]; then
       echo "Nothing to do."
       break
     elif [[ $rename_all == true ]]; then
-      mv "$1" "$(dirname "$1")/$newfilename"
+      rename_file "$1" "$(dirname "$1")/$newfilename"
       break
     else
       read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: " ynaemorcsq
       case "$userinput" in
-        y) mv "$1" "$(dirname "$1")/$newfilename"; break ;;
+        y) rename_file "$1" "$(dirname "$1")/$newfilename"; break ;;
         n) break ;;
-        a) mv "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
+        a) rename_file "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
         e) echo "Enter new title:"; read -i "$title" -e title ;;
         m)
           title=${title,,}
@@ -207,6 +258,7 @@ pkgrename() {
   echo
 }
 
+# File loop
 while [[ $1 != "" ]]; do
   if [[ -d "$1" ]]; then
     # File descriptor 3 because of nested reads (function "read_userinput")
