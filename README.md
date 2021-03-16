@@ -33,7 +33,7 @@ You can easily customize the naming scheme in the customization section at the t
 
     pattern='$title [$category] [$title_id].pkg'
 
-Possible variables: title, category, releasegroup                              
+Possible variables: title, category, firmware, releasegroup                              
 Plus original SFO strings: app_ver, content_id, title_id, version  
 
 You can fully customize every aspect of the file name.
