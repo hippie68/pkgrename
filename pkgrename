@@ -1,4 +1,5 @@
 #!/bin/bash
+# https://github.com/hippie68/pkgrename
 # Renames PS4 PKG files based on param.sfo information and predefined patterns.
 # Requires script "sfo" (https://github.com/hippie68/sfo) in $PATH.
 
@@ -181,6 +182,7 @@ pkgrename() {
         firmware=${line#*0x}
         firmware=${firmware:0:2}.${firmware:2:2}
         firmware=${firmware#0}
+        (( ${firmware/./} )) || firmware= # Set empty if not a number
         ;;
       TITLE) title=${line#*=} ;; # Game/Patch/DLC name
       TITLE_ID) title_id=${line#*=} ;; # CUSAXXXXX
@@ -194,10 +196,14 @@ pkgrename() {
     sdk=${sdk%%,*}
     sdk=${sdk:0:2}.${sdk:2:2}
     sdk=${sdk#0}
+    (( ${sdk/./} )) || sdk= # Set empty if not a number
   fi
 
   # Check file name for backport
   if [[ ${1,,} == *backport* ]]; then
+    backport=Backport
+  # Compare sdk and firmware; could generate false positives (hopefully not)
+  elif [[ $sdk == 5.05 && ${firmware/./} -gt 600 ]]; then
     backport=Backport
   fi
 
