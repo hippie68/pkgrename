@@ -9,8 +9,8 @@ sfo_script_name=sfo
 # Customization section:
 
 # How the filename should look like:
-pattern='$title [$category] [$title_id] [$releasegroup].pkg'
-# Possible variables: title, category, firmware, releasegroup
+pattern='$title [$category] [$title_id] [$releasegroup] [$backport].pkg'
+# Possible variables: title, category, backport, sdk, firmware, releasegroup
 # Plus original SFO strings: app_ver, content_id, title_id, version
 
 # Replacement for characters that would be invalid on an exFAT file system:
@@ -97,7 +97,7 @@ read_userinput() {
   local char
   while read -e -t 0.01; do true; done # Clear buffer
   while [[ ${char,,} != [$2] ]]; do
-    read -p "$1" -n 1 char
+    read -p "$1 " -n 1 char
     while read -e -t 0.01; do true; done
     echo
   done
@@ -122,24 +122,52 @@ online_search() {
   fi
 }
 
-# Renames a file on case-insensitive filesystems like exFAT
+# Moves file "$1" to new file name "$2"
 rename_file() {
+  # Skip if filenames are equal
+  if [[ $1 == "$2" ]]; then
+    echo "Nothing to do."
+    return 0 # Skip to next PKG
+  fi
+
+  # Skip if new file name is an existing directory
+  if [[ -d "$2" ]]; then
+    echo "A directory with the same name already exists." >&2
+    echo "Skipped file $1" >&2
+    rename_all=false
+    return 1 # Return to interactive loop with current PKG
+  fi
+
   if [[ -f "$2" ]]; then
-   if [[ -f "$1.pkgrename" ]]; then
-     echo "The old temporary file \"$1.pkgrename\" prevents renaming." >&2
-     echo "Please fix this and then try again." >&2
-   else
-     mv "$1" "$1.pkgrename" && mv "$1.pkgrename" "$2"
-   fi
+    # Filesystem is case-insensitive (e.g. exFAT)
+    if [[ ${1,,} == "${2,,}" ]]; then
+      if [[ -f "$1.pkgrename" ]]; then
+        echo "The old temporary file \"$1.pkgrename\" prevents renaming." >&2
+        echo "Please fix this and then try again." >&2
+        return 1
+      else
+        # Workaround for mv on case-insensitive filesystems
+        mv "$1" "$1.pkgrename" && mv "$1.pkgrename" "$2"
+      fi
+    # Filesystem is case-sensitive
+    else
+      echo "File \"$2\" already exists."
+      read_userinput "Overwrite? [Y]es [N]o" yn
+      case $userinput in
+        y) mv "$1" "$2" ;;
+        n) return 1 ;;
+      esac
+    fi
   else
-    mv "$1" "$2"
+    mv -i "$1" "$2"
   fi
 }
 
 # Accepts a PKG file and renames it
 pkgrename() {
-  local app_ver category content_id firmware newfilename online_search_result \
-    pubtoolinfo releasegroup title title_id version
+  local app_ver backport category content_id firmware newfilename \
+    online_search_result pubtoolinfo release releasegroup sdk title title_id \
+    version
   echo "${1##*/}"
 
   # Run external "sfo" script to get param.sfo variables
@@ -149,18 +177,28 @@ pkgrename() {
       CATEGORY) category=${line#*=} ;; # ac: DLC, gd: Game, gp: Patch
       CONTENT_ID) content_id=${line#*=} ;; # https://www.psdevwiki.com/ps4/Content_ID
       PUBTOOLINFO) pubtoolinfo=${line#*=} ;;
+      SYSTEM_VER)
+        firmware=${line#*0x}
+        firmware=${firmware:0:2}.${firmware:2:2}
+        firmware=${firmware#0}
+        ;;
       TITLE) title=${line#*=} ;; # Game/Patch/DLC name
       TITLE_ID) title_id=${line#*=} ;; # CUSAXXXXX
       VERSION) version=${line#*=} ;; # Master version
     esac
   done < <("$sfo_script_name" "$1")
 
-  # Create "firmware" variable (stays empty if PKG is DLC)
+  # Create "sdk" variable (stays empty if PKG is DLC)
   if [[ $category == +(gd|gp) ]]; then
-    firmware=${pubtoolinfo#*sdk_ver=}
-    firmware=${firmware%%,*}
-    firmware=${firmware:0:2}.${firmware:2:2}
-    firmware=${firmware#0}
+    sdk=${pubtoolinfo#*sdk_ver=}
+    sdk=${sdk%%,*}
+    sdk=${sdk:0:2}.${sdk:2:2}
+    sdk=${sdk#0}
+  fi
+
+  # Check file name for backport
+  if [[ ${1,,} == *backport* ]]; then
+    backport=Backport
   fi
 
   # Check file name for release groups
@@ -188,11 +226,21 @@ pkgrename() {
     *[^a-z]unlimited[^a-z]*) releasegroup="UNLiMiTED" ;;
     *[^a-z]walmart[^a-z]*) releasegroup="WaLMaRT" ;;
     *[^a-z]waysted[^a-z]*) releasegroup="WaYsTeD" ;;
-    # Other releases
-    *[^a-z]arczi[^a-z]*) releasegroup="By Arczi" ;;
-    *[^a-z]opoisso893[^a-z]*) releasegroup="By OPOISSO893" ;;
-    *[^a-z]cyb1k[^a-z]*) releasegroup="By CyB1K" ;;
   esac
+
+  # Other releases
+  case ${1,,} in
+    *[^a-z]arczi[^a-z]*) release="Arczi" ;;
+    *[^a-z]opoisso893[^a-z]*) release="OPOISSO893" ;;
+    *[^a-z]cyb1k[^a-z]*) release="CyB1K" ;;
+  esac
+  if [[ $release != "" ]]; then
+    if [[ $releasegroup != "" ]]; then
+      releasegroup="$releasegroup by $release"
+    else
+      releasegroup="$release"
+    fi
+  fi
 
   # This line is option "-o", must be run before title customization
   [[ $search_ps_store == true ]] && online_search
@@ -211,7 +259,7 @@ pkgrename() {
   # Interactive loop
   while true; do
     # Apply user's pattern
-    newfilename=$(eval echo $pattern)
+    newfilename=$(eval echo "$pattern")
 
     # Remove outer shell characters and whitespace caused by empty variables
     newfilename=${newfilename//$outer_shell/}
@@ -227,14 +275,30 @@ pkgrename() {
       echo "Nothing to do."
       break
     elif [[ $rename_all == true ]]; then
-      rename_file "$1" "$(dirname "$1")/$newfilename"
-      break
+      if rename_file "$1" "$(dirname "$1")/$newfilename"; then
+        break
+      else
+        continue
+      fi
     else
-      read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: " ynaemorcsq
-      case "$userinput" in
-        y) rename_file "$1" "$(dirname "$1")/$newfilename"; break ;;
+      read_userinput "Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit:" ynaemorcsq
+      case $userinput in
+        y)
+          if rename_file "$1" "$(dirname "$1")/$newfilename"; then
+            break
+          else
+            continue
+          fi
+          ;;
         n) break ;;
-        a) rename_file "$1" "$(dirname "$1")/$newfilename"; rename_all=true; break ;;
+        a)
+          if rename_file "$1" "$(dirname "$1")/$newfilename"; then
+            rename_all=true
+            break
+          else
+            continue
+          fi
+          ;;
         e) echo "Enter new title:"; read -i "$title" -e title ;;
         m)
           title=${title,,}
