@@ -31,9 +31,9 @@ The script in action looks like this:
 
 You can easily customize the naming scheme in the customization section at the top of the script:
 
-    pattern='$title [$category] [$title_id].pkg'
+    pattern='$title [$category] [$title_id] [$releasegroup] [$backport].pkg'
 
-Possible variables: title, category, firmware, releasegroup                              
+Possible variables: title, category, backport, sdk, firmware, releasegroup                              
 Plus original SFO strings: app_ver, content_id, title_id, version  
 
 You can fully customize every aspect of the file name.
