@@ -200,11 +200,9 @@ pkgrename() {
     (( ${sdk/./} )) || sdk= # Set empty if not a number
   fi
 
-  # Check file name for backport
-  if [[ ${1,,} == *backport* ]]; then
-    backport=Backport
+  # Check for backport
   # Compare sdk and firmware; could generate false positives (hopefully not)
-  elif [[ $sdk == 5.05 && ${firmware/./} -gt 600 ]]; then
+  if [[ $sdk == 5.05 && ${firmware/./} -gt 600 ]]; then
     backport=Backport
   fi
 
