@@ -10,7 +10,7 @@ sfo_script_name=sfo
 # Customization section:
 
 # How the filename should look like:
-pattern='$title [$category] [$filesize] [$title_id] [$releasegroup] [$release] [$backport].pkg'
+pattern='$title [$category] [$title_id] [$releasegroup] [$release] [$backport].pkg'
 # Possible variables:
 #   title, category, sdk, firmware, releasegroup, release, backport
 # Plus original SFO strings: app_ver, content_id, title_id, version
@@ -201,8 +201,8 @@ pkgrename() {
   fi
 
   # Check for backport
-  # Compare sdk and firmware; could generate false positives (hopefully not)
-  if [[ $sdk == 5.05 && ${firmware/./} -gt 600 ]]; then
+  # Compare $sdk and $firmware; could generate false positives (hopefully not)
+  if [[ ${sdk/./} -le 505 && ${firmware/./} -gt 600 ]]; then
     backport=Backport
   fi
 
@@ -261,7 +261,9 @@ pkgrename() {
 
     # Remove outer shell characters and whitespace caused by empty variables
     newfilename=${newfilename//$outer_shell/}
-    newfilename=${newfilename//  / }
+    shopt -s extglob
+    newfilename=${newfilename// +( )/ }
+    shopt -u extglob
     newfilename=${newfilename/ ./.}
 
     # Encforce exFAT compatibility
