@@ -38,9 +38,10 @@ customize_title() {
 
 # Do all other file name customization here:
 customize() {
+  backport_string="BACKPORT"
   # How different categories should look like:
-  category_game="Game"
-  category_patch="Update v${app_ver#0}"
+  category_game="BASE GAME"
+  category_patch="UPDATE ${app_ver#0}"
   category_dlc="DLC"
   # Optional: characters to remove should a variable be empty:
   outer_shell="[]"
@@ -202,8 +203,8 @@ pkgrename() {
 
   # Check for backport
   # Compare $sdk and $firmware; could generate false positives (hopefully not)
-  if [[ ${sdk/./} -le 505 && ${firmware/./} -gt 600 ]]; then
-    backport=Backport
+  if [[ $sdk == 5.05 && ${firmware/./} -gt 600 ]]; then
+    backport=$backport_string
   fi
 
   # Check file name for release groups
