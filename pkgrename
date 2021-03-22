@@ -21,6 +21,7 @@ exfat_placeholder=_
 # Do title customization here:
 # e.g. title=${title//SEARCH/REPLACE}
 customize_title() {
+  # Replace various characters with less exotic alternatives
   title=${title//[®™]/}
   title=${title//–/-}
   title=${title//’/\'}
@@ -38,6 +39,7 @@ customize_title() {
 
 # Do all other file name customization here:
 customize() {
+  # How it should look like when a backport is detected:
   backport_string="BACKPORT"
   # How different categories should look like:
   category_game="BASE GAME"
@@ -168,9 +170,9 @@ rename_file() {
 
 # Accepts a PKG file and renames it
 pkgrename() {
-  local app_ver backport category content_id firmware newfilename \
-    online_search_result pubtoolinfo release releasegroup sdk title title_id \
-    version
+  local app_ver backport backport_detected category content_id firmware \
+    newfilename online_search_result pubtoolinfo release releasegroup sdk \
+    title title_id version
   echo "${1##*/}"
 
   # Run external "sfo" script to get param.sfo variables
@@ -199,12 +201,6 @@ pkgrename() {
     sdk=${sdk:0:2}.${sdk:2:2}
     sdk=${sdk#0}
     (( ${sdk/./} )) || sdk= # Set empty if not a number
-  fi
-
-  # Check for backport
-  # Compare $sdk and $firmware; could generate false positives (hopefully not)
-  if [[ $sdk == 5.05 && ${firmware/./} -gt 600 ]]; then
-    backport=$backport_string
   fi
 
   # Check file name for release groups
@@ -248,6 +244,14 @@ pkgrename() {
   customize_title
   title_backup=$title # Backup for possible use of [R]eset
   customize
+
+  # Checks following customization
+  # Check for backport; could generate false positives (hopefully not)
+  if [[  $sdk == 5.05 && ${firmware/./} -gt 600 \
+    || ${1,,} == *[^a-z]backport[^a-z]* \
+    || ${1,,} == *[^a-z]"$backport_string"[^a-z]* ]]; then
+    backport=$backport_string
+  fi
   case "$category" in
     ac) category="$category_dlc" ;;
     gd) category="$category_game" ;;
