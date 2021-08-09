@@ -1,7 +1,7 @@
 #!/bin/bash
 # https://github.com/hippie68/pkgrename
 # Renames PS4 PKG files based on param.sfo information and predefined patterns.
-# Requires script "sfo" (https://github.com/hippie68/sfo) in $PATH.
+# Requires script/program "sfo" (https://github.com/hippie68/sfo) in $PATH.
 
 # If you have renamed "sfo", enter the correct name here:
 sfo_script_name=sfo
@@ -173,7 +173,10 @@ pkgrename() {
   local app_ver backport backport_detected category content_id firmware \
     newfilename online_search_result pubtoolinfo release releasegroup sdk \
     title title_id version
-  echo "${1##*/}"
+  local filename=${1##*/} # Just the file name without path
+  local filename_lowercase=${filename,,}
+
+  echo "${filename}"
 
   # Run external "sfo" script to get param.sfo variables
   while IFS= read -r line; do
@@ -204,7 +207,7 @@ pkgrename() {
   fi
 
   # Check file name for release groups
-  case ${1,,} in
+  case ${filename_lowercase} in
     *[^a-z]bigbluebox[^a-z]*) releasegroup="BigBlueBox" ;;
     *[^a-z]blz[^a-z]*|*[^a-z]blaze[^a-z]*) releasegroup="BlaZe" ;;
     *[^a-z]caf[^a-z]*) releasegroup="CAF" ;;
@@ -213,12 +216,13 @@ pkgrename() {
     *[^a-z]gcmr[^a-z]*) releasegroup="GCMR" ;;
     *[^a-z]hoodlum[^a-z]*) releasegroup="HOODLUM" ;;
     *[^a-z]hr[^a-z]*) releasegroup="HR" ;;
+    *[^a-z]internal[^a-z]*) releasegroup="iNTERNAL" ;;
     *[^a-z]jrp[^a-z]*) releasegroup="JRP" ;;
     *[^a-z]kotf[^a-z]*) releasegroup="KOTF" ;;
     *[^a-z]levelup[^a-z]*) releasegroup="LevelUp" ;;
     *[^a-z]lfc[^a-z]*|*[^a-z]lightforce[^a-z]*) releasegroup="LiGHTFORCE" ;;
     *[^a-z]marvtm[^a-z]*) releasegroup="MarvTM" ;;
-    *[^a-z]moemoe[^a-z]*) releasegroup="MOEMOE" ;;
+    *[^a-z]moemoe[^a-z]*|moe[^a-z]*) releasegroup="MOEMOE" ;;
     *[^a-z]playable[^a-z]*) releasegroup="Playable" ;;
     *[^a-z]prelude[^a-z]*) releasegroup="PRELUDE" ;;
     *[^a-z]protocol[^a-z]*) releasegroup="PROTOCOL" ;;
@@ -231,10 +235,10 @@ pkgrename() {
   esac
 
   # Other releases
-  case ${1,,} in
+  case ${filename_lowercase} in
     *[^a-z]arczi[^a-z]*) release="Arczi" ;;
-    *[^a-z]opoisso893[^a-z]*) release="OPOISSO893" ;;
     *[^a-z]cyb1k[^a-z]*) release="CyB1K" ;;
+    *[^a-z]opoisso893[^a-z]*) release="OPOISSO893" ;;
   esac
 
   # This line is option "-o", must be run before title customization
@@ -248,15 +252,15 @@ pkgrename() {
   # Checks following customization
   # Check for backport; could generate false positives (hopefully not)
   if [[  $sdk == 5.05 && ${firmware/./} -gt 600 \
-    || ${1,,} == *[^a-z]backport[^a-z]* \
-    || ${1,,} == *[^a-z]"$backport_string"[^a-z]* ]]; then
+    || ${filename_lowercase} == *[^a-z]backport[^a-z]* \
+    || ${filename_lowercase} == *[^a-z]"$backport_string"[^a-z]* ]]; then
     backport=$backport_string
   fi
   case "$category" in
     ac) category="$category_dlc" ;;
     gd) category="$category_game" ;;
     gp) category="$category_patch" ;;
-    *) category="Unknown category" ;;
+    *) category= ;;
   esac
 
   # Interactive loop
@@ -276,7 +280,7 @@ pkgrename() {
     newfilename=${newfilename//[&:\\|\/\"<>*]/$exfat_placeholder}
 
     echo "$newfilename"
-    if [[ $newfilename == "${1##*/}" && $force_prompt != true ]]; then
+    if [[ $newfilename == "$filename" && $force_prompt != true ]]; then
       echo "Nothing to do."
       break
     elif [[ $rename_all == true ]]; then
