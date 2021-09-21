@@ -3,10 +3,92 @@
 #include "../include/onlinesearch.h"
 #include "../include/options.h"
 
+#ifndef _WIN32
 #include <curl/curl.h>
-#include <string.h>
+#endif
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
+#define URL_LEN 128
+
+int create_url(char url[URL_LEN], char *content_id) {
+  char *prefix;
+  switch (content_id[0]) {
+    case 'U':
+      prefix = "https://store.playstation.com/en-us/product/";
+      break;
+    case 'E':
+      prefix = "https://store.playstation.com/en-gb/product/";
+      break;
+    case 'J':
+      prefix = "https://store.playstation.com/ja-jp/product/";
+      break;
+    default:
+      printf("Online search not supported for this Content ID (\"%s\").\n",
+        content_id);
+      return 1;
+  }
+  strcpy(url, prefix);
+  strcat(url, content_id);
+  return 0;
+}
+
+#ifdef _WIN32
+void search_online(char *content_id, char *title, int manual_search) {
+  char url[URL_LEN];
+  char cmd[128];
+
+  if (create_url(url, content_id) != 0) return;
+
+  if (manual_search) printf("Searching online, please wait...\n");
+
+  // Create cURL command
+  strcpy(cmd, "curl.exe -Ls --connect-timeout 5 ");
+  strcat(cmd, url);
+  //printf("cmd: %s\n", cmd); // DEBUG
+
+  // Run cURL
+  FILE *pipe = _popen(cmd, "rb");
+  if (pipe == NULL) {
+    fprintf(stderr, "Error while calling curl.exe.\n");
+    return;
+  }
+  char c;
+  char curl_output[65536];
+  int index = 0;
+  while((c = fgetc(pipe)) != EOF && index <= 65536) {
+    curl_output[index++] = c;
+  }
+  curl_output[index] = '\0';
+  int result = _pclose(pipe);
+  if (result != 0) {
+    fprintf(stderr, "An error occured (error code \"%d\"). "
+      "See https://curl.se/libcurl/c/libcurl-errors.html\n", result);
+  }
+
+  //printf("Output: %s\n", curl_output); // DEBUG
+
+  // Search cURL's output for the title
+  char *start = strstr(curl_output, "@type");
+  if (start != NULL && strlen(start) > 25) {
+    start += 25;
+    char *end = strchr(start, '"');
+    if (end != NULL) {
+      end[0] = '\0';
+      if (manual_search) printf("Online title: \"%s\"\n", start);
+      strncpy(title, start, MAX_FILENAME_LEN);
+      title[MAX_FILENAME_LEN - 1] = '\0';
+    } else {
+      printf(BRIGHT_RED "Error while searching online. Please contact the"
+        "developer and give him this link: %s.\n" RESET, url);
+    }
+  } else {
+    if (option_online == 0) printf("No online information found.\n");
+  }
+}
+
+#else
 static char *curl_output = NULL;
 
 // libcurl callback function
@@ -21,42 +103,27 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
 }
 
 void search_online(char *content_id, char *title, int manual_search) {
+  char url[URL_LEN];
+
   CURL *curl = curl_easy_init();
   if (curl == NULL) {
     fprintf(stderr, "Error while initializing cURL.\n");
     return;
   }
 
+  if (create_url(url, content_id) != 0) goto exit;
+
   if (manual_search) printf("Searching online, please wait...\n");
 
-  char *url_part1;
-  switch (content_id[0]) {
-    case 'U':
-      url_part1 = "https://store.playstation.com/en-us/product/";
-      break;
-    case 'E':
-      url_part1 = "https://store.playstation.com/en-gb/product/";
-      break;
-    case 'J':
-      url_part1 = "https://store.playstation.com/ja-jp/product/";
-      break;
-    default:
-      printf("Online search not supported for this Content ID (\"%s\").\n",
-        content_id);
-      goto exit;
-  }
-  char *url_part2 = content_id;
-  char *url = malloc(strlen(url_part1) + strlen(url_part2) + 1);
-  strcpy(url, url_part1);
-  strcat(url, url_part2);
   CURLcode result;
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
   curl_easy_setopt(curl, CURLOPT_URL, url);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
   result = curl_easy_perform(curl);
   if (result != CURLE_OK) {
     fprintf(stderr, "An error occured (error code \"%d\"). "
-      "See https://curl.se/libcurl/c/libcurl-errors.html.\n", result);
+      "See https://curl.se/libcurl/c/libcurl-errors.html\n", result);
     goto exit;
   }
   //printf("%s\n", curl_output); // DEBUG
@@ -84,3 +151,4 @@ void search_online(char *content_id, char *title, int manual_search) {
     curl_output = NULL;
   }
 }
+#endif

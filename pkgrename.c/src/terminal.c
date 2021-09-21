@@ -1,27 +1,42 @@
 #include "../include/terminal.h"
 
 #include <signal.h>
+
+#ifdef _WIN32
+static unsigned int win_orig_codepage;
+#include <windows.h>
+#else
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-
 static struct termios terminal, terminal_backup;
+#endif
 
 // Resets terminal
 void reset_terminal() {
+  #ifdef _WIN32
+  SetConsoleOutputCP(win_orig_codepage); // Restore stored codepage
+  #else
   tcsetattr(STDIN_FILENO, TCSANOW, &terminal_backup);
+  #endif
 }
 
 // Needs to be called before other functions
 void initialize_terminal() {
+  #ifdef _WIN32
+  win_orig_codepage = GetConsoleOutputCP(); // Store current codepage
+  SetConsoleOutputCP(65001); // UTF-8 codepage
+  #else
   tcgetattr(STDIN_FILENO, &terminal);
   terminal_backup = terminal;
-  atexit(reset_terminal);
   signal(SIGINT, exit);
+  #endif
+  atexit(reset_terminal);
 }
 
+#ifndef _WIN32
 // Sets terminal to noncanonical input mode (= no need to press enter)
 void raw_terminal() {
   terminal.c_lflag &= ~(ICANON);
@@ -102,3 +117,4 @@ void scan_string(char *string, int max_size, char *default_string) {
   }
   strncpy(string, buffer, max_size);
 }
+#endif

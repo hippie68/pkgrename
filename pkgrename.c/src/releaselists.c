@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _WIN32
 #include <shlwapi.h>
 #define strcasestr StrStrIA
 #endif

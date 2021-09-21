@@ -7,6 +7,7 @@
 #include "include/options.h"
 #include "include/releaselists.h"
 #include "include/sfo.h"
+#include "include/terminal.h"
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -15,7 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _WIN32
 #include <conio.h>
 #include "include/dirent.h"
 #define DIR_SEPARATOR '\\'
@@ -23,7 +24,6 @@
 #include <dirent.h>
 #include <signal.h>
 #include <stdio_ext.h> // For __fpurge(); only on GNU systems
-#include "include/terminal.h"
 #define DIR_SEPARATOR '/'
 #endif
 
@@ -181,6 +181,7 @@ void mixed_case(char *string) {
 
   // Game-specific rules
   strreplace(string, "Crosscode", "CrossCode");
+  strreplace(string, "Littlebigplanet", "LittleBigPlanet");
   strreplace(string, "Nier", "NieR");
   strreplace(string, "Ok K.o.", "OK K.O.");
   strreplace(string, "Pixeljunk", "PixelJunk");
@@ -447,8 +448,10 @@ void pkgrename(char *filename) {
     strreplace(new_basename, "Ⅲ", "III");
 
     // Replace potentially annoying special characters
-    strreplace(new_basename, "™", NULL);
-    strreplace(new_basename, "®", NULL);
+    strreplace(new_basename, "™_", "_");
+    strreplace(new_basename, "™", " ");
+    strreplace(new_basename, "®_", "_");
+    strreplace(new_basename, "®", " ");
     strreplace(new_basename, "–", "-");
 
     // Remove any number of repeated spaces
@@ -480,7 +483,7 @@ void pkgrename(char *filename) {
     // Print new basename
     printf("=> \"%s\"", new_basename);
     if (option_verbose && special_char_count) {
-      printf(BRIGHT_PURPLE " (%d)" RESET, special_char_count);
+      printf(BRIGHT_YELLOW " (%d)" RESET, special_char_count);
     }
     printf("\n");
 
@@ -509,7 +512,7 @@ void pkgrename(char *filename) {
     // Read user input
     printf("Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");
     do {
-      #if defined(_WIN32) || defined(_WIN64)
+      #ifdef _WIN32
       c = getch();
       #else
       __fpurge(stdin); // TODO: On non-Windows, non-GNU systems:
@@ -533,12 +536,13 @@ void pkgrename(char *filename) {
       case 'e': // [E]dit: let user manually enter a new title
         // TODO: scan_string() for Windows
         printf("\nEnter new title: ");
-        #if ! defined (_WIN32) && ! defined (_WIN64)
+        #ifndef _WIN32
         scan_string(title, MAX_FILENAME_LEN, title);
         printf("\n\n");
         #else
         fgets(title, MAX_FILENAME_LEN, stdin);
         printf("\n");
+        title[strlen(title) - 1] = '\0'; // Remove Enter character
         #endif
         break;
       case 'm': // [M]ix: convert title to mixed-case letter format
@@ -555,15 +559,15 @@ void pkgrename(char *filename) {
         printf("\nTitle has been reset to \"%s\".\n\n", title_backup);
         break;
       case 'c': // [C]hars: reveal all non-printable characters
-        printf("\nOriginal: \"%s\"\nRevealed: \"", title_backup);
+        printf("\nOriginal: \"%s\"\nRevealed: \"", title);
         int count = 0;
-        for (int i = 0; i < strlen(title_backup); i++) {
-          if (isprint(title_backup[i])) {
-            printf("%c", title_backup[i]);
+        for (int i = 0; i < strlen(title); i++) {
+          if (isprint(title[i])) {
+            printf("%c", title[i]);
           } else {
             count++;
             printf(BRIGHT_YELLOW "#%d" RESET,
-              title_backup[i]);
+              title[i]);
           }
         }
         printf("\"\n%d special character%c found.\n\n", count,
@@ -585,7 +589,7 @@ void pkgrename(char *filename) {
   free(path);
 }
 
-// Companion function for qsort in pkgrename_dir()
+// Companion function for qsort in parse_directory()
 int qsort_compare_strings(const void *p, const void *q) {
   return strcmp(*(const char **)p, *(const char **)q);
 }
@@ -659,8 +663,8 @@ void parse_directory(char *directory_name) {
 
 int main(int argc, char *argv[]) {
   // Set terminal to noncanonical input processing mode
-  #if ! defined(_WIN32) && ! defined(_WIN64)
   initialize_terminal();
+  #ifndef _WIN32
   raw_terminal();
   #endif
 
@@ -681,5 +685,10 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  #ifdef _WIN32
+  reset_terminal();
+  #endif
+
   exit(0);
 }

@@ -18,12 +18,20 @@ int option_underscores = 0;
 int option_verbose = 0;
 int option_yes_to_all = 0;
 
+void print_version(void) {
+  printf("Release date: %s %s\n", __DATE__, __TIME__);
+  printf("Get the latest version at "
+    "https://github.com/hippie68/pkgrename\n");
+  printf("Report bugs or request features at "
+    "https://github.com/hippie68/pkgrename/issues\n");
+}
+
 void print_usage(void) {
   printf(
-  "Usage: pkgrename [options] file|directory [file|directory ...]\n"
+  "Usage: pkgrename [options] [file|directory ...]\n"
   "\n"
   "Renames PS4 PKGs to match a file name pattern. The default pattern is:\n"
-  "\"%%title%% [%%type%%] [%%title_id%%] [%%release_group%%] [%%backport%%]\"\n"
+  "\"%%title%% [%%type%%] [%%title_id%%] [%%release_group%%] [%%uploader%%] [%%backport%%]\"\n"
   "\n"
   "Available pattern variables:\n"
   "\n"
@@ -36,7 +44,7 @@ void print_usage(void) {
   "  %%firmware%%       \"4.70\"\n"
   "  %%release_group%%  \"PRELUDE\" (*)\n"
   "  %%sdk%%            \"4.50\"\n"
-  "  %%size%%           \"0.11 GB\n"
+  "  %%size%%           \"0.11 GB\"\n"
   "  %%title%%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
   "  %%title_id%%       \"CUSA05571\"\n"
   "  %%type%%           \"Update 1.50\" (**)\n"
@@ -83,6 +91,7 @@ void print_usage(void) {
   "      --set-type x      Set %%type%% mapping to 5 comma-separated strings x.\n"
   "  -u, --underscores     Use underscores instead of spaces in file names.\n"
   "  -v, --verbose         Display additional infos.\n"
+  "      --version         Print release date.\n"
   "  -y, --yes-to-all      Do not prompt; rename all files automatically.\n"
   );
 }
@@ -124,6 +133,10 @@ static inline void optf_set_type(char *argument) {
 }
 static inline void optf_underscores() { option_underscores = 1; }
 static inline void optf_verbose() { option_verbose = 1; }
+static inline void optf_version() {
+  print_version();
+  exit(0);
+}
 static inline void optf_yes_to_all() { option_yes_to_all = 1; }
 
 void parse_options(int argc, char *argv[]) {
@@ -146,6 +159,7 @@ void parse_options(int argc, char *argv[]) {
     */
     {'u', "underscores",    0, optf_underscores},
     {'v', "verbose",        0, optf_verbose},
+    {0,   "version",        0, optf_version},
     {0,   "yes-to-all",     0, optf_yes_to_all},
     {EOF}
   };

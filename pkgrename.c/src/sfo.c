@@ -1,6 +1,6 @@
 /* Parses a PS4 PKG or param.sfo file for SFO parameters */
 
-#if ! defined(_WIN32) && ! defined(_WIN64)
+#ifndef _WIN32
 #include <byteswap.h>
 #endif
 #include "../include/sfo.h"
@@ -15,7 +15,7 @@
 static FILE *file;
 static size_t pkg_offset;
 
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _WIN32
 // Replacement function for byteswap.h's bswap_16
 static uint16_t bswap_16(uint16_t val) {
   return (val >> 8) | (val << 8);
