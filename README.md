@@ -111,6 +111,8 @@ As this version is still being worked on, please use it with care and try a read
       -v, --verbose         Display additional infos.
       -y, --yes-to-all      Do not prompt; rename all files automatically.
 
-How to compile (requires development files of cURL and OpenSSL 1.x):
+How to compile (requires libcurl development files):
 
     gcc pkgrename.c src/*.c -o pkgrename -lcurl --pedantic -Wall
+
+Or download a compiled Windows release at https://github.com/hippie68/pkgrename/releases.
