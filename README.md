@@ -43,7 +43,7 @@ For exFAT compatibility, by default certain characters are replaced with undersc
 
 # pkgrename.c
 
-pkgrename.c is a standalone, advanced version written in C. It currently works on GNU systems, and with a few changes hopefully on Windows, too. Please report any bugs or make feature requests at https://github.com/hippie68/pkgrename/issues.
+pkgrename.c is a standalone, advanced version written in C. It currently works on GNU system and Windows. Please report any bugs or make feature requests at https://github.com/hippie68/pkgrename/issues.
 As this version is still being worked on, please use it with care and try a read-only run first (option -n).
 
     Usage: pkgrename [options] file|directory [file|directory ...]
