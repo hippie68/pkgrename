@@ -43,17 +43,17 @@ void print_usage(void) {
   "  %%content_id%%     \"EP4497-CUSA05571_00-00000000000GOTY1\"\n"
   "  %%firmware%%       \"4.70\"\n"
   "  %%release_group%%  \"PRELUDE\" (*)\n"
+  "  %%release%%        \"John Doe\" (*)\n"
   "  %%sdk%%            \"4.50\"\n"
-  "  %%size%%           \"0.11 GB\"\n"
+  "  %%size%%           \"0.11 GiB\"\n"
   "  %%title%%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
   "  %%title_id%%       \"CUSA05571\"\n"
   "  %%type%%           \"Update 1.50\" (**)\n"
-  "  %%uploader%%       \"John Doe\" (*)\n"
   "  %%version%%        \"1.00\"\n"
   "\n"
   "  (*) A backport is currently detected by searching file names for existing\n"
-  "  strings \"BP\", \"Backport\", and \"BACKPORT\". The same goes for release\n"
-  "  groups and uploaders.\n"
+  "  strings \"BP\", \"Backport\", and \"BACKPORT\". The same principle applies\n"
+  "  to release groups and releases.\n"
   "\n"
   "  (**) %%type%% is %%category%% mapped to \"Game,Update %%app_ver%%,DLC,App\".\n"
   "  These default strings, up to 5, can be changed via option \"--set-type\":\n"
@@ -77,7 +77,30 @@ void print_usage(void) {
   "After parsing, empty pairs of brackets, empty pairs of parentheses, and any\n"
   "remaining curly braces (\"[]\", \"()\", \"{\", \"}\") will be removed.\n"
   "\n"
+  "Special characters:\n"
+  "\n"
+  "  - For exFAT compatibility, some characters are replaced by a placeholder\n"
+  "    character (default: underscore).\n"
+  "  - Some special characters like copyright symbols are automatically removed\n"
+  "    or replaced by more common alternatives.\n"
+  "  - Numbers appearing in parentheses behind a file name indicate the presence\n"
+  "    of non-ASCII characters.\n"
+  "\n"
+  "Interactive prompt explained:\n"
+  "\n"
+  "  - [Y]es     Rename the file as seen.\n"
+  "  - [N]o      Skip the file and drops all changes.\n"
+  "  - [A]ll     Same as yes, but also for all future files.\n"
+  "  - [E]dit    Prompt to manually edit the title.\n"
+  "  - [M]ix     Convert the letter case to mixed-case style.\n"
+  "  - [O]nline  Search the PS Store online for title information.\n"
+  "  - [R]eset   Revert all title changes.\n"
+  "  - [C]hars   Show special characters, if present.\n"
+  "  - [S]FO     Show file's param.sfo information.\n"
+  "  - [Q]uit    Exit the program.\n"
+  "\n"
   "Options:\n"
+  "\n"
   "  -f, --force           Force-prompt even when file names match.\n"
   "  -m, --mixed-case      Automatically apply mixed-case letter style.\n"
   "      --no-placeholder  Hide characters instead of using placeholders.\n"
@@ -86,7 +109,7 @@ void print_usage(void) {
   "  -n, --no-to-all       Do not prompt; do not actually rename any files.\n"
   "  -o, --online          Automatically search online for %%title%%.\n"
   "  -p, --pattern x       Set the file name pattern to string x.\n"
-  "      --placeholder x   Set the file name placeholder character to x.\n"
+  "      --placeholder x   Set the placeholder character to x.\n"
   "  -r, --recursive       Traverse subdirectories recursively.\n"
   "      --set-type x      Set %%type%% mapping to 5 comma-separated strings x.\n"
   "  -u, --underscores     Use underscores instead of spaces in file names.\n"
@@ -98,10 +121,6 @@ void print_usage(void) {
 
 // Option functions
 static inline void optf_force() { option_force = 1; }
-static inline void optf_fw() {
-  option_fw = 1;
-  option_no_to_all = 1;
-}
 static inline void optf_help() {
   print_usage();
   exit(0);

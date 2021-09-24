@@ -1,5 +1,6 @@
 #define _FILE_OFFSET_BITS 64
 
+#include "include/characters.h"
 #include "include/colors.h"
 #include "include/common.h"
 #include "include/getopts.h"
@@ -7,6 +8,7 @@
 #include "include/options.h"
 #include "include/releaselists.h"
 #include "include/sfo.h"
+#include "include/strings.h"
 #include "include/terminal.h"
 
 #include <ctype.h>
@@ -23,187 +25,14 @@
 #else
 #include <dirent.h>
 #include <signal.h>
-#include <stdio_ext.h> // For __fpurge(); only on GNU systems
 #define DIR_SEPARATOR '/'
 #endif
 
-char *illegal_characters = "\"*/:<>?\\|"; // https://www.ntfs.com/exfat-filename-dentry.htm
-
-// Default settings
 char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]";
-char placeholder_char = '_';
-struct custom_category custom_category = {"Game", "Update %app_ver%", "DLC", "App", NULL};
-
+struct custom_category custom_category =
+  {"Game", "Update %app_ver%", "DLC", "App", NULL};
 int first_run;
-
-// Removes unused curly braces expressions; returns 0 on success
-int curlycrunch(char *string, int position) {
-  char temp[MAX_FILENAME_LEN] = "";
-
-  // Search left
-  for (int i = position; i >= 0; i--) {
-    if (string[i] == '{') {
-      strncpy(temp, string, i);
-      //printf("%s left : %s\n", __func__, temp); // DEBUG
-      break;
-    }
-    if (string[i] == '}') {
-      return 1;
-    }
-  }
-
-  // Search right
-  for (int i = position; i < strlen(string); i++) {
-    if (string[i] == '}') {
-      strcat(temp, &string[i + 1]);
-      //printf("%s right: %s\n", __func__, temp); // DEBUG
-      break;
-    }
-    if (string[i] == '{' || i == strlen(string) - 1) {
-      return 1;
-    }
-  }
-
-  strcpy(string, temp);
-  return 0;
-}
-
-// Replaces first occurence of "search" in "string" (an array of char), e.g.:
-// strreplace(temp, "%title%", title)
-// "string" must be of length MAX_FILENAME_LEN
-char *strreplace(char *string, char *search, char *replace) {
-  char *p;
-  char temp[MAX_FILENAME_LEN] = "";
-  int position; // Position of first character of "search" in "format_string"
-  p = strstr(string, search);
-  if (p != NULL) {
-    if (replace == NULL) replace = "";
-    position = p - string;
-
-    //printf("Search string: %s\n", search); // DEBUG
-    //printf("Replace string: %s\n", replace); // DEBUG
-
-    // If replace string is an empty pattern variable, remove associated
-    // curly braces expression
-    if (search[0] == '%' && strcmp(replace, "") == 0 &&
-      curlycrunch(string, position) == 0) return NULL;
-
-    strncpy(temp, string, position);
-    //printf("Current string (step 1): \"%s\"\n", temp); // DEBUG
-    strcat(temp, replace);
-    //printf("Current string (step 2): \"%s\"\n", temp);  // DEBUG
-    strcat(temp, string + position + strlen(search));
-    //printf("Current string (step 3): \"%s\"\n\n", temp);  //DEBUG
-    strcpy(string, temp);
-  }
-  return p;
-}
-
-// Returns 1 if char c is illegal on an exFAT file system
-int is_in_set(char c, char *set) {
-  for (int i = 0; i < strlen(set); i++) {
-    if (c == set[i]) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-// Replaces or hides (skips) illegal characters;
-// returns number of non-printable characters
-int replace_illegal_characters(char *string) {
-  char buffer[strlen(string)];
-  char *p = buffer;
-  int count = 0;
-
-  for (int i = 0; i < strlen(string); i++) {
-    // Printable character
-    if (isprint(string[i])) {
-      if (is_in_set(string[i], illegal_characters)) {
-        // Replace illegal character
-        if (option_no_placeholder) {
-          *(p++) = ' '; // Replace with space
-        } else {
-          *(p++) = placeholder_char; // Replace with placeholder
-        }
-      } else {
-        *(p++) = string[i];
-      }
-    // Non-printable character
-    } else { // TODO: Skip user-provided non-printable characters
-      *(p++) = string[i];
-      count++;
-    }
-  }
-  *p = '\0';
-  strcpy(string, buffer);
-
-  return count;
-}
-
-// Converts a string to mixed-case style; returns number of changed characters
-void mixed_case(char *string) {
-  string[0] = toupper(string[0]);
-  for (int i = 1; i < strlen(string); i++) {
-    if (isspace(string[i - 1]) || is_in_set(string[i - 1], ":-;~_1234567890")) {
-      string[i] = toupper(string[i]);
-    } else {
-      string[i] = tolower(string[i]);
-    }
-  }
-
-  // Special case rules
-  strreplace(string, "Dc", "DC");
-  strreplace(string, "Dlc", "DLC");
-  strreplace(string, "Dx", "DX");
-  strreplace(string, "Hd", "HD");
-  strreplace(string, "hd", "HD");
-  strreplace(string, "Vs", "vs");
-  strreplace(string, "Iii", "III");
-  strreplace(string, "Ii", "II");
-  strreplace(string, " Iv", " IV");
-  strreplace(string, " Iv:", " IV:");
-  strreplace(string, " Iv\0", " IV\0");
-  strreplace(string, "Viii", "VIII");
-  strreplace(string, "Vii", "VII");
-  strreplace(string, " Vi ", " VI ");
-  strreplace(string, " Vi:", " VI:");
-  strreplace(string, " Vi\0", " VI\0");
-  strreplace(string, "Ix", "IX");
-  strreplace(string, "Xiii", "XIII");
-  strreplace(string, "Xii", "XII");
-  strreplace(string, "Xiv", "XIV");
-  strreplace(string, "Xi", "XI");
-  strreplace(string, "Xvi", "XVI");
-  strreplace(string, "Xv", "XV");
-  strreplace(string, "Playstation", "PlayStation");
-
-  // Game-specific rules
-  strreplace(string, "Crosscode", "CrossCode");
-  strreplace(string, "Littlebigplanet", "LittleBigPlanet");
-  strreplace(string, "Nier", "NieR");
-  strreplace(string, "Ok K.o.", "OK K.O.");
-  strreplace(string, "Pixeljunk", "PixelJunk");
-  strreplace(string, "Singstar", "SingStar");
-  strreplace(string, "Snk", "SNK");
-  strreplace(string, "Wwe", "WWE");
-  strreplace(string, "Xcom", "XCOM");
-}
-
-int lower_strcmp(char *string1, char *string2) {
-  if (strlen(string1) == strlen(string2)) {
-    for (int i = 0; i < strlen(string1); i++) {
-      if (tolower(string1[i]) != tolower(string2[i])) {
-        return 1;
-      }
-    }
-  } else {
-    return 1;
-  }
-
-  return 0;
-}
 
 void rename_file(char *filename, char *new_basename, char *path) {
   FILE *file;
@@ -251,6 +80,9 @@ void pkgrename(char *filename) {
   char *basename; // "filename" without path
   char lowercase_basename[MAX_FILENAME_LEN];
   char *path; // "filename" without file
+  int spec_chars_current, spec_chars_total;
+  int paramc;
+  struct sfo_parameter *params;
 
   // Internal pattern variables
   char *app_ver = NULL;
@@ -261,16 +93,12 @@ void pkgrename(char *filename) {
   char *release_group = NULL;
   char *release = NULL;
   char sdk[6] = "";
+  char size[10];
   char title[MAX_TITLE_LEN] = "";
   char *title_backup = NULL;
   char *title_id = NULL;
   char *type = NULL;
   char *version = NULL;
-
-  int paramc;
-  struct sfo_parameter *params;
-
-  int special_char_count = 0;
 
   // Define the file's basename
   basename = strrchr(filename, DIR_SEPARATOR);
@@ -303,9 +131,12 @@ void pkgrename(char *filename) {
         fprintf(stderr, "Error while opening file \"%s\".\n", filename);
         exit(1);
       case 1:
-        fprintf(stderr, "Param.sfo magic number not found in file \"%s\".\n",
+        fprintf(stderr, "File is not a PKG: \"%s\".\n", filename);
+        exit(1);
+      case 2:
+        fprintf(stderr, "Param.sfo not found in file \"%s\".\n",
           filename);
-        break;
+        exit(1);
     }
     return;
   }
@@ -346,7 +177,7 @@ void pkgrename(char *filename) {
         sdk[2] = '.';
       }
     } else if (strcmp(params[i].name, "SYSTEM_VER") == 0) {
-      sprintf(firmware, "%08x", params[i].integer);
+      sprintf(firmware, "%08x", *params[i].integer);
       if (firmware[0] == '0' && option_leading_zeros == 0) {
         firmware[0] = firmware[1];
         firmware[1] = '.';
@@ -381,23 +212,17 @@ void pkgrename(char *filename) {
   release_group = get_release_group(lowercase_basename);
   release = get_uploader(lowercase_basename);
 
-  // Get file size in GB/GiB
-  ;
-  int temp = 0;
-  long int temp2 = 0;
-  FILE *file = fopen(filename, "rb");
-  fseek(file, 0, SEEK_END);
-  temp = ftello(file) / 1000000000;
-  temp2 = ftello(file) % 1000000000;
-  fclose(file);
-  char size[12];
-  snprintf(size, sizeof size, "%d.%ld GB", temp, temp2 / 10000000);
-  // TODO: GiB
-  // TODO: Make calculations more efficient
+  // Get file size in GiB
+  if (strstr(format_string, "%size%")) {
+    FILE *file = fopen(filename, "rb");
+    fseek(file, 0, SEEK_END);
+    snprintf(size, sizeof(size), "%.2f GiB", ftello(file) / 1073741824.0);
+    fclose(file);
+  }
 
   // Option "online"
   if (option_online == 1) {
-    search_online(content_id, title, 0);
+    search_online(content_id, title);
   }
 
   // Option "mixed-case"
@@ -423,7 +248,8 @@ void pkgrename(char *filename) {
     strreplace(new_basename, "%release_group%", release_group);
     strreplace(new_basename, "%release%", release);
     strreplace(new_basename, "%sdk%", sdk);
-    strreplace(new_basename, "%size%", size);
+    if (strstr(format_string, "%size%"))
+      strreplace(new_basename, "%size%", size);
     strreplace(new_basename, "%title%", title);
     strreplace(new_basename, "%title_id%", title_id);
     strreplace(new_basename, "%version%", version);
@@ -439,20 +265,24 @@ void pkgrename(char *filename) {
       ;
 
     // Replace illegal characters
-    special_char_count = replace_illegal_characters(new_basename);
+    replace_illegal_characters(new_basename);
+
+    spec_chars_total = count_spec_chars(new_basename);
 
     // Replace misused special characters
-    strreplace(new_basename, "＆", "&");
-    strreplace(new_basename, "’", "'");
-    strreplace(new_basename, " ", " "); // Irregular whitespace
-    strreplace(new_basename, "Ⅲ", "III");
+    if (strreplace(new_basename, "＆", "&")) spec_chars_current--;
+    if (strreplace(new_basename, "’", "'")) spec_chars_current--;
+    if (strreplace(new_basename, " ", " ")) spec_chars_current--;
+    if (strreplace(new_basename, "Ⅲ", "III")) spec_chars_current--;
 
     // Replace potentially annoying special characters
-    strreplace(new_basename, "™_", "_");
-    strreplace(new_basename, "™", " ");
-    strreplace(new_basename, "®_", "_");
-    strreplace(new_basename, "®", " ");
-    strreplace(new_basename, "–", "-");
+    if (strreplace(new_basename, "™_", "_")) spec_chars_current--;
+    if (strreplace(new_basename, "™", " ")) spec_chars_current--;
+    if (strreplace(new_basename, "®_", "_")) spec_chars_current--;
+    if (strreplace(new_basename, "®", " ")) spec_chars_current--;
+    if (strreplace(new_basename, "–", "-")) spec_chars_current--;
+
+    spec_chars_current = count_spec_chars(new_basename);
 
     // Remove any number of repeated spaces
     while (strreplace(new_basename, "  ", " ") != NULL)
@@ -482,8 +312,13 @@ void pkgrename(char *filename) {
 
     // Print new basename
     printf("=> \"%s\"", new_basename);
-    if (option_verbose && special_char_count) {
-      printf(BRIGHT_YELLOW " (%d)" RESET, special_char_count);
+
+    // Print number of special characters
+    if (option_verbose) {
+      printf(BRIGHT_YELLOW " (%d/%d)" RESET, spec_chars_current,
+        spec_chars_total);
+    } else if (spec_chars_current) {
+      printf(BRIGHT_YELLOW " (%d)" RESET, spec_chars_current);
     }
     printf("\n");
 
@@ -515,8 +350,6 @@ void pkgrename(char *filename) {
       #ifdef _WIN32
       c = getch();
       #else
-      __fpurge(stdin); // TODO: On non-Windows, non-GNU systems:
-                       // Disable capital letter parsing instead
       c = getchar();
       #endif
     } while (strchr("ynaemorcsq", c) == NULL);
@@ -551,7 +384,7 @@ void pkgrename(char *filename) {
         break;
       case 'o': // [O]nline: search the PlayStation store online for metadata
         printf("\n");
-        search_online(content_id, title, 1);
+        search_online(content_id, title);
         printf("\n");
         break;
       case 'r': // [R]eset: undo all changes
@@ -617,11 +450,13 @@ void parse_directory(char *directory_name) {
     if (directory_entry->d_type == DT_DIR) {
       // Save name in the directory list
       if (option_recursive == 1
-        && strcmp(directory_entry->d_name, "..") != 0 // Exclude system directories
+        && strcmp(directory_entry->d_name, "..") != 0 // Exclude system dirs
         && strcmp(directory_entry->d_name, ".") != 0)
       {
-        directory_names[directory_count] = malloc(strlen(directory_name) + 1 + strlen(directory_entry->d_name) + 1);
-        sprintf(directory_names[directory_count], "%s%c%s", directory_name, DIR_SEPARATOR, directory_entry->d_name);
+        directory_names[directory_count] = malloc(strlen(directory_name) + 1 +
+          strlen(directory_entry->d_name) + 1);
+        sprintf(directory_names[directory_count], "%s%c%s", directory_name,
+          DIR_SEPARATOR, directory_entry->d_name);
         directory_count++;
       }
     // Entry is .pkg file
@@ -633,15 +468,18 @@ void parse_directory(char *directory_name) {
           printf(GRAY "\nEntering directory \"%s\"\n\n" RESET, directory_name);
         }
         // Save name in the file list
-        filenames[file_count] = malloc(strlen(directory_name) + 1 + strlen(directory_entry->d_name) + 1);
-        sprintf(filenames[file_count], "%s%c%s", directory_name, DIR_SEPARATOR, directory_entry->d_name);
+        filenames[file_count] = malloc(strlen(directory_name) + 1 +
+          strlen(directory_entry->d_name) + 1);
+        sprintf(filenames[file_count], "%s%c%s", directory_name, DIR_SEPARATOR,
+          directory_entry->d_name);
         file_count++;
       }
     }
   }
 
   // Sort the final lists
-  qsort(directory_names, directory_count, sizeof(char *), qsort_compare_strings);
+  qsort(directory_names, directory_count, sizeof(char *),
+    qsort_compare_strings);
   qsort(filenames, file_count, sizeof(char *), qsort_compare_strings);
 
   // Files first

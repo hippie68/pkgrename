@@ -12,7 +12,7 @@
 
 #define URL_LEN 128
 
-int create_url(char url[URL_LEN], char *content_id) {
+static int create_url(char url[URL_LEN], char *content_id) {
   char *prefix;
   switch (content_id[0]) {
     case 'U':
@@ -35,13 +35,13 @@ int create_url(char url[URL_LEN], char *content_id) {
 }
 
 #ifdef _WIN32
-void search_online(char *content_id, char *title, int manual_search) {
+void search_online(char *content_id, char *title) {
   char url[URL_LEN];
   char cmd[128];
 
   if (create_url(url, content_id) != 0) return;
 
-  if (manual_search) printf("Searching online, please wait...\n");
+  printf("Searching online, please wait...\n");
 
   // Create cURL command
   strcpy(cmd, "curl.exe -Ls --connect-timeout 5 ");
@@ -63,7 +63,7 @@ void search_online(char *content_id, char *title, int manual_search) {
   curl_output[index] = '\0';
   int result = _pclose(pipe);
   if (result != 0) {
-    fprintf(stderr, "An error occured (error code \"%d\"). "
+    fprintf(stderr, "An error occured (error code \"%d\").\n"
       "See https://curl.se/libcurl/c/libcurl-errors.html\n", result);
   }
 
@@ -76,15 +76,19 @@ void search_online(char *content_id, char *title, int manual_search) {
     char *end = strchr(start, '"');
     if (end != NULL) {
       end[0] = '\0';
-      if (manual_search) printf("Online title: \"%s\"\n", start);
-      strncpy(title, start, MAX_FILENAME_LEN);
-      title[MAX_FILENAME_LEN - 1] = '\0';
+      if (strcmp(start, "") != 0) {
+        printf("Online title: \"%s\"\n", start);
+        strncpy(title, start, MAX_FILENAME_LEN);
+        title[MAX_FILENAME_LEN - 1] = '\0';
+      } else goto fail; // String is empty
     } else {
-      printf(BRIGHT_RED "Error while searching online. Please contact the"
-        "developer and give him this link: %s.\n" RESET, url);
+      fprintf(stderr, BRIGHT_RED "Error while searching online. Please contact"
+        " the developer at https://github.com/hippie68/pkgrename/issues and "
+        "show him this link: %s.\n" RESET, url);
     }
   } else {
-    if (option_online == 0) printf("No online information found.\n");
+    fail:
+    printf("No online information found.\n");
   }
 }
 
@@ -102,7 +106,7 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
   return(nmemb);
 }
 
-void search_online(char *content_id, char *title, int manual_search) {
+void search_online(char *content_id, char *title) {
   char url[URL_LEN];
 
   CURL *curl = curl_easy_init();
@@ -113,7 +117,7 @@ void search_online(char *content_id, char *title, int manual_search) {
 
   if (create_url(url, content_id) != 0) goto exit;
 
-  if (manual_search) printf("Searching online, please wait...\n");
+  printf("Searching online, please wait...\n");
 
   CURLcode result;
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
@@ -122,7 +126,7 @@ void search_online(char *content_id, char *title, int manual_search) {
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
   result = curl_easy_perform(curl);
   if (result != CURLE_OK) {
-    fprintf(stderr, "An error occured (error code \"%d\"). "
+    fprintf(stderr, "An error occured (error code \"%d\").\n"
       "See https://curl.se/libcurl/c/libcurl-errors.html\n", result);
     goto exit;
   }
@@ -133,15 +137,19 @@ void search_online(char *content_id, char *title, int manual_search) {
     char *end = strchr(start, '"');
     if (end != NULL) {
       end[0] = '\0';
-      if (manual_search) printf("Online title: \"%s\"\n", start);
-      strncpy(title, start, MAX_FILENAME_LEN);
-      title[MAX_FILENAME_LEN - 1] = '\0';
+      if (strcmp(start, "") != 0) {
+        printf("Online title: \"%s\"\n", start);
+        strncpy(title, start, MAX_FILENAME_LEN);
+        title[MAX_FILENAME_LEN - 1] = '\0';
+      } else goto fail; // String is empty
     } else {
-      printf(BRIGHT_RED "Error while searching online. Please contact the"
-        "developer and give him this link: %s.\n" RESET, url);
+      fprintf(stderr, BRIGHT_RED "Error while searching online. Please contact"
+        " the developer at https://github.com/hippie68/pkgrename/issues and "
+        "show him this link: %s.\n" RESET, url);
     }
   } else {
-    if (option_online == 0) printf("No online information found.\n");
+    fail:
+    printf("No online information found.\n");
   }
 
   exit:
