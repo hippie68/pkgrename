@@ -57,7 +57,7 @@ void parse_directory(char *directory_name) {
         sprintf(directory_names[directory_count], "%s%c%s", directory_name,
           DIR_SEPARATOR, directory_entry->d_name);
         directory_count++;
-        if (directory_count > directory_count_max) {
+        if (directory_count == directory_count_max) {
           directory_count_max *= 2;
           directory_names = realloc(directory_names,
             sizeof(void *) * directory_count_max);
@@ -82,7 +82,7 @@ void parse_directory(char *directory_name) {
         sprintf(filenames[file_count], "%s%c%s", directory_name, DIR_SEPARATOR,
           directory_entry->d_name);
         file_count++;
-        if (file_count > file_count_max) {
+        if (file_count == file_count_max) {
           file_count_max *= 2;
           filenames = realloc(filenames, sizeof(void *) * file_count_max);
         }
