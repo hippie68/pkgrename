@@ -109,7 +109,7 @@ How to compile for Windows:
 
     x86_64-w64-mingw32-gcc-win32 pkgrename.c src/*.c -o pkgrename.exe --static -s -O1    
 
-Or download a compiled Windows release (which currently might not be up-to-date) at https://github.com/hippie68/pkgrename/releases.
+Or download a compiled Windows release at https://github.com/hippie68/pkgrename/releases.
 
 Please report bugs, make feature requests, or add missing data at https://github.com/hippie68/pkgrename/issues.
 
