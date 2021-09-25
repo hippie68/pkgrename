@@ -3,6 +3,7 @@
 #include "include/characters.h"
 #include "include/colors.h"
 #include "include/common.h"
+#include "include/dirparse.h"
 #include "include/getopts.h"
 #include "include/onlinesearch.h"
 #include "include/options.h"
@@ -203,7 +204,9 @@ void pkgrename(char *filename) {
   }
 
   // Detect backport
-  if (strstr(lowercase_basename, "backport") != NULL ||
+  if (type == custom_category.patch && strcmp(sdk, "5.05") == 0) {
+    backport = "Backport";
+  } else if (strstr(lowercase_basename, "backport") != NULL ||
       strstr(lowercase_basename, "bp") != NULL) {
     backport = "Backport";
   }
@@ -233,8 +236,9 @@ void pkgrename(char *filename) {
   // User input loop
   char c;
   while(1) {
-    // Build new file name:
-    // ========================================================================
+    /***************************************************************************
+     * Build new file name
+     **************************************************************************/
 
     // Replace pattern variables
     strcpy(new_basename, format_string);
@@ -308,7 +312,8 @@ void pkgrename(char *filename) {
     }
 
     strcat(new_basename, ".pkg");
-    // ========================================================================
+
+    /**************************************************************************/
 
     // Print new basename
     printf("=> \"%s\"", new_basename);
@@ -343,6 +348,10 @@ void pkgrename(char *filename) {
       rename_file(filename, new_basename, path);
       goto exit;
     }
+
+    /***************************************************************************
+     * Interactive prompt
+     **************************************************************************/
 
     // Read user input
     printf("Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");
@@ -420,83 +429,6 @@ void pkgrename(char *filename) {
   exit:
   free(params);
   free(path);
-}
-
-// Companion function for qsort in parse_directory()
-int qsort_compare_strings(const void *p, const void *q) {
-  return strcmp(*(const char **)p, *(const char **)q);
-}
-
-// Finds all .pkg files in a directory and runs pkgrename() on them
-void parse_directory(char *directory_name) {
-  DIR *dir;
-  struct dirent *directory_entry;
-  char *directory_names[1000], *filenames[1000];
-  int directory_count = 0, file_count = 0;
-
-  // Remove a possibly trailing directory separator
-  {
-    int len = strlen(directory_name);
-    if (len > 1 && directory_name[len - 1] == DIR_SEPARATOR) {
-      directory_name[len - 1] = '\0';
-    }
-  }
-
-  dir = opendir(directory_name);
-  if (dir == NULL) return;
-  // Read all directory entries to put them in lists
-  while ((directory_entry = readdir(dir)) != NULL) {
-    // Entry is directory
-    if (directory_entry->d_type == DT_DIR) {
-      // Save name in the directory list
-      if (option_recursive == 1
-        && strcmp(directory_entry->d_name, "..") != 0 // Exclude system dirs
-        && strcmp(directory_entry->d_name, ".") != 0)
-      {
-        directory_names[directory_count] = malloc(strlen(directory_name) + 1 +
-          strlen(directory_entry->d_name) + 1);
-        sprintf(directory_names[directory_count], "%s%c%s", directory_name,
-          DIR_SEPARATOR, directory_entry->d_name);
-        directory_count++;
-      }
-    // Entry is .pkg file
-    } else {
-      char *file_extension = strrchr(directory_entry->d_name, '.');
-      if (file_extension != NULL && strcasecmp(file_extension, ".pkg") == 0) {
-        // One-time message when entering a new directory that has .pkg files
-        if (option_recursive == 1 && file_count == 0) {
-          printf(GRAY "\nEntering directory \"%s\"\n\n" RESET, directory_name);
-        }
-        // Save name in the file list
-        filenames[file_count] = malloc(strlen(directory_name) + 1 +
-          strlen(directory_entry->d_name) + 1);
-        sprintf(filenames[file_count], "%s%c%s", directory_name, DIR_SEPARATOR,
-          directory_entry->d_name);
-        file_count++;
-      }
-    }
-  }
-
-  // Sort the final lists
-  qsort(directory_names, directory_count, sizeof(char *),
-    qsort_compare_strings);
-  qsort(filenames, file_count, sizeof(char *), qsort_compare_strings);
-
-  // Files first
-  for (int i = 0; i < file_count; i++) {
-    pkgrename(filenames[i]);
-    free(filenames[i]);
-  }
-
-  // Then directories
-  if (option_recursive == 1) {
-    for (int i = 0; i < directory_count; i++) {
-      parse_directory(directory_names[i]);
-      free(directory_names[i]);
-    }
-  }
-
-  closedir(dir);
 }
 
 int main(int argc, char *argv[]) {
