@@ -45,9 +45,9 @@ static struct rls_list release_groups[] = {
 // List of uploaders
 static struct rls_list uploaders[] = {
   {"Arczi", "arczi"},
-  {"CyB1K", "cyb1k"},
-  {"OPOISSO893", "opoisso893"},
-  {"SeanP2500", "seanp2500"},
+  {"CyB1K", "cyb1k", "cybik"},
+  {"OPOISSO893", "opoisso893", "opoisso"},
+  {"SeanP2500", "seanp2500", "seanp"},
   {NULL}
 };
 

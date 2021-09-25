@@ -116,5 +116,6 @@ void scan_string(char *string, int max_size, char *default_string) {
     }
   }
   strncpy(string, buffer, max_size);
+  printf("\n");
 }
 #endif

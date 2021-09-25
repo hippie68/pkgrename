@@ -29,6 +29,8 @@
 #define DIR_SEPARATOR '/'
 #endif
 
+#define MAX_TAG_LEN 10
+
 char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]";
 struct custom_category custom_category =
@@ -81,6 +83,8 @@ void pkgrename(char *filename) {
   char *basename; // "filename" without path
   char lowercase_basename[MAX_FILENAME_LEN];
   char *path; // "filename" without file
+  char tag_release_group[MAX_TAG_LEN] = "";
+  char tag_release[MAX_TAG_LEN] = "";
   int spec_chars_current, spec_chars_total;
   int paramc;
   struct sfo_parameter *params;
@@ -249,8 +253,16 @@ void pkgrename(char *filename) {
     strreplace(new_basename, "%category%", category);
     strreplace(new_basename, "%content_id%", content_id);
     strreplace(new_basename, "%firmware%", firmware);
-    strreplace(new_basename, "%release_group%", release_group);
-    strreplace(new_basename, "%release%", release);
+    if (tag_release_group[0] != '\0') {
+      strreplace(new_basename, "%release_group%", tag_release_group);
+    } else {
+      strreplace(new_basename, "%release_group%", release_group);
+    }
+    if (tag_release[0] != '\0') {
+      strreplace(new_basename, "%release%", tag_release);
+    } else {
+      strreplace(new_basename, "%release%", release);
+    }
     strreplace(new_basename, "%sdk%", sdk);
     if (strstr(format_string, "%size%"))
       strreplace(new_basename, "%size%", size);
@@ -354,14 +366,14 @@ void pkgrename(char *filename) {
      **************************************************************************/
 
     // Read user input
-    printf("Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");
+    printf("OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");
     do {
       #ifdef _WIN32
       c = getch();
       #else
       c = getchar();
       #endif
-    } while (strchr("ynaemorcsq", c) == NULL);
+    } while (strchr("ynaetmorcsq", c) == NULL);
     printf("%c\n", c);
 
     // Evaluate user input
@@ -380,12 +392,43 @@ void pkgrename(char *filename) {
         printf("\nEnter new title: ");
         #ifndef _WIN32
         scan_string(title, MAX_FILENAME_LEN, title);
-        printf("\n\n");
         #else
         fgets(title, MAX_FILENAME_LEN, stdin);
-        printf("\n");
         title[strlen(title) - 1] = '\0'; // Remove Enter character
         #endif
+        printf("\n");
+        break;
+      case 't': // [T]ag: let user enter release groups or releases
+        ;
+        char tag[MAX_TAG_LEN] = "";
+        char *p;
+        printf("\nEnter new tag: ");
+        #ifndef _WIN32
+        scan_string(tag, MAX_TAG_LEN, "");
+        #else
+        fgets(tag, MAX_TAG_LEN, stdin);
+        tag[strlen(tag) - 1] = '\0'; // Remove Enter character
+        #endif
+        if (tag[0] != '\0') {
+          if ((p = get_release_group(tag)) != NULL) {
+            printf("Using \"%s\" as release group.\n", p);
+            strncpy(tag_release_group, p, MAX_TAG_LEN);
+            tag_release_group[MAX_TAG_LEN] = '\0';
+          } else if ((p = get_uploader(tag)) != NULL) {
+            printf("Using \"%s\" as release.\n", p);
+            strncpy(tag_release, p, MAX_TAG_LEN);
+            tag_release[MAX_TAG_LEN] = '\0';
+          } else {
+            printf("\"%s\" not found in the database. If you want to help the "
+              "database grow, please\nreport missing data at "
+              "\"%s\".\n",
+              tag, SUPPORT_LINK);
+            printf("Using \"%s\" as release.\n", tag);
+            strncpy(tag_release, tag, MAX_TAG_LEN);
+            tag_release[MAX_TAG_LEN] = '\0';
+          }
+        }
+        printf("\n");
         break;
       case 'm': // [M]ix: convert title to mixed-case letter format
         mixed_case(title);
@@ -398,7 +441,18 @@ void pkgrename(char *filename) {
         break;
       case 'r': // [R]eset: undo all changes
         strcpy(title, title_backup);
-        printf("\nTitle has been reset to \"%s\".\n\n", title_backup);
+        printf("\nTitle has been reset to \"%s\".\n", title_backup);
+        if (tag_release_group[0] != '\0') {
+          printf("Tagged release group \"%s\" has been reset.\n",
+            tag_release_group);
+          tag_release_group[0] = '\0';
+        }
+        if (tag_release[0] != '\0') {
+          printf("Tagged release \"%s\" has been reset.\n",
+            tag_release);
+          tag_release[0] = '\0';
+        }
+        printf("\n");
         break;
       case 'c': // [C]hars: reveal all non-printable characters
         printf("\nOriginal: \"%s\"\nRevealed: \"", title);

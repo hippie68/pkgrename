@@ -21,9 +21,9 @@ int option_yes_to_all = 0;
 void print_version(void) {
   printf("Release date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
-    "https://github.com/hippie68/pkgrename\n");
+    "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
-    "https://github.com/hippie68/pkgrename/issues\n");
+    "\"%s\".\n", SUPPORT_LINK);
 }
 
 void print_usage(void) {
@@ -91,9 +91,10 @@ void print_usage(void) {
   "  - [N]o      Skip the file and drops all changes.\n"
   "  - [A]ll     Same as yes, but also for all future files.\n"
   "  - [E]dit    Prompt to manually edit the title.\n"
+  "  - [T]ag     Prompt to enter a release group or a release.\n"
   "  - [M]ix     Convert the letter case to mixed-case style.\n"
   "  - [O]nline  Search the PS Store online for title information.\n"
-  "  - [R]eset   Revert all title changes.\n"
+  "  - [R]eset   Undo all changes.\n"
   "  - [C]hars   Reveal special characters, if present.\n"
   "  - [S]FO     Show file's param.sfo information.\n"
   "  - [Q]uit    Exit the program.\n"
@@ -171,6 +172,9 @@ void parse_options(int argc, char *argv[]) {
     {0,   "placeholder",    1, optf_placeholder},
     {'r', "recursive",      0, optf_recursive},
     {0,   "set-type",       1, optf_set_type},
+    //{'t', "tag",            1, optf_set_tag}, // TODO: Comma-separated list as argument; contains release groups and/or releases to rename the file with;
+                                              // If a tag is unknown, let the user know to report his favorite tags at GitHub
+                                              // Also put this into the interactive loop as [T]ag
     /*
     {0,   "set-keeper-1",   1, optf_set_keeper_1}, // TODO: Custom string to keep; perhaps with set-keeperx and __func; e.g. useful for keeping "Backport" in the file name
     {0,   "set-keeper-2",   1, optf_set_keeper_2},
