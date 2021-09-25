@@ -75,6 +75,7 @@ The program's help screen ("pkgrename --help"):
       - [N]o      Skip the file and drops all changes.
       - [A]ll     Same as yes, but also for all future files.
       - [E]dit    Prompt to manually edit the title.
+      - [T]ag     Prompt to enter a release group or a release.
       - [M]ix     Convert the letter case to mixed-case style.
       - [O]nline  Search the PS Store online for title information.
       - [R]eset   Revert all title changes.
