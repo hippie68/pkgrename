@@ -1,4 +1,4 @@
-# pkgrename.c (supersedes the Bash script)
+# pkgrename.c
 
 pkgrename.c is a standalone, advanced version of the original Bash script, written in C. It currently works on Linux and Windows, possibly on other systems, too.
 As this version is still being worked on, please use it with care and try a read-only run first (option -n).
@@ -17,8 +17,8 @@ The program's help screen ("pkgrename --help"):
     Renames PS4 PKGs to match a file name pattern. The default pattern is:
     "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]"
     
-    Available pattern variables:
-    
+    Pattern variables:
+    ------------------
       Name             Example
       ----------------------------------------------------------------------
       %app_ver%        "1.50"
@@ -35,34 +35,33 @@ The program's help screen ("pkgrename --help"):
       %type%           "Update 1.50" (**)
       %version%        "1.00"
     
-      (*) A backport is currently detected by searching file names for existing
+      (*) Backports not targeting 5.05 are detected by searching file names for
       strings "BP", "Backport", and "BACKPORT". The same principle applies
       to release groups and releases.
     
       (**) %type% is %category% mapped to "Game,Update %app_ver%,DLC,App".
       These default strings, up to 5, can be changed via option "--set-type":
-        --set-type "Game,Patch,DLC,App,Other"
-                   (no spaces before or after commas)
+        --set-type "Game,Patch,DLC,App,Other" (no spaces before or after commas)
+    
+      Only the first occurence of each pattern variable will be parsed.
+      After parsing, empty pairs of brackets, empty pairs of parentheses, and any
+      remaining curly braces ("[]", "()", "{", "}") will be removed.
     
     Curly braces expressions:
-    
+    -------------------------
       Pattern variables and other strings can be grouped together by surrounding
       them with curly braces. If an inner pattern variable turns out to be empty,
       the whole curly braces expression will be removed.
     
-        Example 1 - %firmware% is empty:
-          "%title% [FW %firmware%]"   => "Example DLC [FW ].pkg"  WRONG
-          "%title% [{FW %firmware%}]" => "Example DLC.pkg"        CORRECT
+      Example 1 - %firmware% is empty:
+        "%title% [FW %firmware%]"   => "Example DLC [FW ].pkg"  WRONG
+        "%title% [{FW %firmware%}]" => "Example DLC.pkg"        CORRECT
     
-        Example 2 - %firmware% has a value:
-          "%title% [{FW %firmware%}]" => "Example Game [FW 7.55].pkg"
+      Example 2 - %firmware% has a value:
+        "%title% [{FW %firmware%}]" => "Example Game [FW 7.55].pkg"
     
-    Only the first occurence of each pattern variable will be parsed.
-    After parsing, empty pairs of brackets, empty pairs of parentheses, and any
-    remaining curly braces ("[]", "()", "{", "}") will be removed.
-    
-    Special characters:
-    
+    Handling of special characters:
+    -------------------------------
       - For exFAT compatibility, some characters are replaced by a placeholder
         character (default: underscore).
       - Some special characters like copyright symbols are automatically removed
@@ -70,8 +69,8 @@ The program's help screen ("pkgrename --help"):
       - Numbers appearing in parentheses behind a file name indicate the presence
         of non-ASCII characters.
     
-    Interactive prompt explained:
-    
+    Interactive prompt:
+    -------------------
       - [Y]es     Rename the file as seen.
       - [N]o      Skip the file and drops all changes.
       - [A]ll     Same as yes, but also for all future files.
@@ -79,17 +78,18 @@ The program's help screen ("pkgrename --help"):
       - [M]ix     Convert the letter case to mixed-case style.
       - [O]nline  Search the PS Store online for title information.
       - [R]eset   Revert all title changes.
-      - [C]hars   Show special characters, if present.
+      - [C]hars   Reveal special characters, if present.
       - [S]FO     Show file's param.sfo information.
       - [Q]uit    Exit the program.
     
     Options:
-    
+    --------
       -f, --force           Force-prompt even when file names match.
-      -m, --mixed-case      Automatically apply mixed-case letter style.
-          --no-placeholder  Hide characters instead of using placeholders.
+      -h, --help            Print this help screen.
       -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
                             %firmware%, %sdk%, and %version%.
+      -m, --mixed-case      Automatically apply mixed-case letter style.
+          --no-placeholder  Hide characters instead of using placeholders.
       -n, --no-to-all       Do not prompt; do not actually rename any files.
       -o, --online          Automatically search online for %title%.
       -p, --pattern x       Set the file name pattern to string x.
@@ -103,7 +103,7 @@ The program's help screen ("pkgrename --help"):
 
 How to compile for Linux (requires libcurl development files):
 
-    gcc pkgrename.c src/*.c -o pkgrename -lcurl -s -01
+    gcc pkgrename.c src/*.c -o pkgrename -lcurl -s -O1
 
 How to compile for Windows:
 
