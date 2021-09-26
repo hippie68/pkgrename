@@ -8,7 +8,7 @@ The program in action looks like this:
     $ pkgrename
        "totally_not_helpful_filename.pkg"
     => "Baldur's Gate and Baldur's Gate II_ Enhanced Editions [Update 1.02] [CUSA15671].pkg"
-    Rename? [Y]es [N]o [A]ll [E]dit [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: y
+    OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: y
 
 The program's help screen ("pkgrename --help"):
 
@@ -78,14 +78,14 @@ The program's help screen ("pkgrename --help"):
       - [T]ag     Prompt to enter a release group or a release.
       - [M]ix     Convert the letter case to mixed-case style.
       - [O]nline  Search the PS Store online for title information.
-      - [R]eset   Revert all title changes.
-      - [C]hars   Reveal special characters, if present.
+      - [R]eset   Undo all changes.
+      - [C]hars   Reveal special characters in the title.
       - [S]FO     Show file's param.sfo information.
       - [Q]uit    Exit the program.
     
     Options:
     --------
-      -f, --force           Force-prompt even when file names match.
+      -f, --force           Force-prompt even if file names match.
       -h, --help            Print this help screen.
       -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
                             %firmware%, %sdk%, and %version%.
@@ -95,6 +95,7 @@ The program's help screen ("pkgrename --help"):
       -o, --online          Automatically search online for %title%.
       -p, --pattern x       Set the file name pattern to string x.
           --placeholder x   Set the placeholder character to x.
+          --print-database  Print all current database entries.
       -r, --recursive       Traverse subdirectories recursively.
           --set-type x      Set %type% mapping to 5 comma-separated strings x.
       -u, --underscores     Use underscores instead of spaces in file names.
