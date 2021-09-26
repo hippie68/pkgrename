@@ -95,10 +95,11 @@ void print_usage(void) {
   "  - [M]ix     Convert the letter case to mixed-case style.\n"
   "  - [O]nline  Search the PS Store online for title information.\n"
   "  - [R]eset   Undo all changes.\n"
-  "  - [C]hars   Reveal special characters, if present.\n"
+  "  - [C]hars   Reveal special characters in the title.\n"
   "  - [S]FO     Show file's param.sfo information.\n"
   "  - [Q]uit    Exit the program.\n"
-  "\n"
+  "\n");
+  printf(
   "Options:\n"
   "--------\n"
   "  -f, --force           Force-prompt even when file names match.\n"
@@ -111,6 +112,7 @@ void print_usage(void) {
   "  -o, --online          Automatically search online for %%title%%.\n"
   "  -p, --pattern x       Set the file name pattern to string x.\n"
   "      --placeholder x   Set the placeholder character to x.\n"
+  "      --print-database  Print all current database entries.\n"
   "  -r, --recursive       Traverse subdirectories recursively.\n"
   "      --set-type x      Set %%type%% mapping to 5 comma-separated strings x.\n"
   "  -u, --underscores     Use underscores instead of spaces in file names.\n"
@@ -141,6 +143,11 @@ static inline void optf_pattern(char *pattern) {
   strcpy(format_string, pattern);
 }
 static inline void optf_placeholder(char *placeholder) { placeholder_char = placeholder[0]; }
+static inline void optf_print_database() {
+  extern void print_database();
+  print_database();
+  exit(0);
+}
 static inline void optf_recursive() { option_recursive = 1; }
 static inline void optf_set_type(char *argument) {
   char backup[strlen(argument) + 1];
@@ -170,6 +177,7 @@ void parse_options(int argc, char *argv[]) {
     {'o', "online",         0, optf_online},
     {'p', "pattern",        1, optf_pattern},
     {0,   "placeholder",    1, optf_placeholder},
+    {0,   "print-database", 0, optf_print_database},
     {'r', "recursive",      0, optf_recursive},
     {0,   "set-type",       1, optf_set_type},
     //{'t', "tag",            1, optf_set_tag}, // TODO: Comma-separated list as argument; contains release groups and/or releases to rename the file with;

@@ -29,7 +29,7 @@
 #define DIR_SEPARATOR '/'
 #endif
 
-#define MAX_TAG_LEN 10
+#define MAX_TAG_LEN 20
 
 char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]";
@@ -391,37 +391,40 @@ void pkgrename(char *filename) {
         // TODO: scan_string() for Windows
         printf("\nEnter new title: ");
         #ifndef _WIN32
-        scan_string(title, MAX_FILENAME_LEN, title);
+        scan_string(title, MAX_TITLE_LEN, title, NULL);
         #else
-        fgets(title, MAX_FILENAME_LEN, stdin);
-        title[strlen(title) - 1] = '\0'; // Remove Enter character
+        fgets(title, MAX_TITLE_LEN, stdin);
+        title[strlen(title) - 1] = '\0'; // Remove Enter character on Windows
         #endif
         printf("\n");
         break;
       case 't': // [T]ag: let user enter release groups or releases
         ;
         char tag[MAX_TAG_LEN] = "";
-        char *p;
         printf("\nEnter new tag: ");
         #ifndef _WIN32
-        scan_string(tag, MAX_TAG_LEN, "");
+        scan_string(tag, MAX_TAG_LEN, "", get_tag);
         #else
         fgets(tag, MAX_TAG_LEN, stdin);
-        tag[strlen(tag) - 1] = '\0'; // Remove Enter character
+        tag[strlen(tag) - 1] = '\0'; // Remove Enter character on Windows
+        char *test;
+        if ((test = get_tag(tag)) != NULL) {
+          strcpy(tag, test);
+        }
         #endif
+        char *result;
         if (tag[0] != '\0') {
-          if ((p = get_release_group(tag)) != NULL) {
-            printf("Using \"%s\" as release group.\n", p);
-            strncpy(tag_release_group, p, MAX_TAG_LEN);
+          if ((result = get_release_group(tag)) != NULL) {
+            printf("Using \"%s\" as release group.\n", result);
+            strncpy(tag_release_group, result, MAX_TAG_LEN);
             tag_release_group[MAX_TAG_LEN] = '\0';
-          } else if ((p = get_uploader(tag)) != NULL) {
-            printf("Using \"%s\" as release.\n", p);
-            strncpy(tag_release, p, MAX_TAG_LEN);
+          } else if ((result = get_uploader(tag)) != NULL) {
+            printf("Using \"%s\" as release.\n", result);
+            strncpy(tag_release, result, MAX_TAG_LEN);
             tag_release[MAX_TAG_LEN] = '\0';
           } else {
             printf("\"%s\" not found in the database. If you want to help the "
-              "database grow, please\nreport missing data at "
-              "\"%s\".\n",
+              "database grow, please\nreport missing data at \"%s\".\n",
               tag, SUPPORT_LINK);
             printf("Using \"%s\" as release.\n", tag);
             strncpy(tag_release, tag, MAX_TAG_LEN);
@@ -448,8 +451,7 @@ void pkgrename(char *filename) {
           tag_release_group[0] = '\0';
         }
         if (tag_release[0] != '\0') {
-          printf("Tagged release \"%s\" has been reset.\n",
-            tag_release);
+          printf("Tagged release \"%s\" has been reset.\n", tag_release);
           tag_release[0] = '\0';
         }
         printf("\n");

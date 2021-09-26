@@ -13,7 +13,8 @@ void reset_terminal();
 void raw_terminal();
 
 // Reads user input and stores it in buffer "string"
-void scan_string(char *string, int max_size, char *default_string);
+void scan_string(char *string, int max_size, char *default_string,
+  char *(*f)());
 #endif
 
 #endif

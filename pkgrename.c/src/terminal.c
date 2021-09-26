@@ -45,17 +45,21 @@ void raw_terminal() {
 }
 
 // For use with raw_terminal():
-// Rudimentary user input function with editing capabilities; might have bugs
-void scan_string(char *string, int max_size, char *default_string) {
+// Rudimentary user input function with editing capabilities; might have bugs.
+// Function f() is optional; its return value is used for auto-completion.
+void scan_string(char *string, int max_size, char *default_string,
+  char *(*f)())
+{
   char key;
   char buffer[max_size * 2];
+  char *autocomplete = NULL;
 
   strncpy(buffer, default_string, max_size);
   printf("%s", buffer);
   int i = strlen(buffer);
 
   while ((key = getchar()) != 10) { // Enter key
-    //printf("Number: %d\n", key);
+    //printf("Number: %d\n", key); // DEBUG
     switch (key) {
       case 9: // Tab; ignore
         break;
@@ -103,7 +107,7 @@ void scan_string(char *string, int max_size, char *default_string) {
         break;
       default: // Regular key
         Default:
-        if (i < max_size) {
+        if (i < max_size - 1) {
           printf("%c", key);
           memmove(&buffer[i + 1], &buffer[i], max_size);
           buffer[i] = key;
@@ -114,8 +118,30 @@ void scan_string(char *string, int max_size, char *default_string) {
           }
         }
     }
+
+    // Erase rest of the screen
+    printf("\033[0J");
+
+    // Call provided autocomplete function and print its result
+    if (f != NULL) {
+      autocomplete = f(buffer);
+      if (autocomplete != NULL) {
+        printf("  (%s)", autocomplete);
+        for (int i = 0; i < strlen(autocomplete) + 4; i++) {
+          printf("\b");
+        }
+      }
+    }
   }
-  strncpy(string, buffer, max_size);
+
+  // Return result...
+  printf("\033[0J");
+  if (f != NULL && autocomplete != NULL) { // ...of auto-completion
+    strncpy(string, autocomplete, max_size);
+  } else {
+    strncpy(string, buffer, max_size); // ..of regular input
+  }
+
   printf("\n");
 }
 #endif

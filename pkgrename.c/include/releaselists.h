@@ -7,4 +7,6 @@ char *get_release_group(char *string);
 // Searches the argument for known uploaders and returns the first match
 char *get_uploader(char *string);
 
+char *get_tag(char *string);
+
 #endif
