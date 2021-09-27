@@ -98,6 +98,7 @@ void print_usage(void) {
   "  - [C]hars   Reveal special characters in the title.\n"
   "  - [S]FO     Show file's param.sfo information.\n"
   "  - [Q]uit    Exit the program.\n"
+  "  - [B]       (Hidden) Toggle the \"Backport\" tag.\n"
   "\n");
   printf(
   "Options:\n"

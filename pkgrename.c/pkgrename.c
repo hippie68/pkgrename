@@ -20,7 +20,7 @@
 #include <unistd.h>
 
 #ifdef _WIN32
-#include <conio.h>
+#include <conio.h> // For getch()
 #include "include/dirent.h"
 #define DIR_SEPARATOR '\\'
 #else
@@ -28,8 +28,6 @@
 #include <signal.h>
 #define DIR_SEPARATOR '/'
 #endif
-
-#define MAX_TAG_LEN 20
 
 char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]";
@@ -373,7 +371,7 @@ void pkgrename(char *filename) {
       #else
       c = getchar();
       #endif
-    } while (strchr("ynaetmorcsq", c) == NULL);
+    } while (strchr("ynaetmorcsqb", c) == NULL);
     printf("%c\n", c);
 
     // Evaluate user input
@@ -388,30 +386,33 @@ void pkgrename(char *filename) {
         rename_file(filename, new_basename, path);
         goto exit;
       case 'e': // [E]dit: let user manually enter a new title
-        // TODO: scan_string() for Windows
+        ;
+        char backup[MAX_TITLE_LEN];
+        strcpy(backup, title);
+        reset_terminal();
         printf("\nEnter new title: ");
-        #ifndef _WIN32
-        scan_string(title, MAX_TITLE_LEN, title, NULL);
-        #else
         fgets(title, MAX_TITLE_LEN, stdin);
-        title[strlen(title) - 1] = '\0'; // Remove Enter character on Windows
-        #endif
+        title[strlen(title) - 1] = '\0'; // Remove Enter character
+        // Remove entered control characters
+        for (int i = 0; i < strlen(title); i++) {
+          if (iscntrl(title[i])) {
+            memmove(&title[i], &title[i + 1], strlen(title) - i);
+            i--;
+          }
+        }
+        // Restore title if nothing has been entered
+        if (title[0] == '\0') {
+          strcpy(title, backup);
+          printf("Using title \"%s\".\n", title);
+        }
         printf("\n");
+        raw_terminal();
         break;
       case 't': // [T]ag: let user enter release groups or releases
         ;
         char tag[MAX_TAG_LEN] = "";
         printf("\nEnter new tag: ");
-        #ifndef _WIN32
         scan_string(tag, MAX_TAG_LEN, "", get_tag);
-        #else
-        fgets(tag, MAX_TAG_LEN, stdin);
-        tag[strlen(tag) - 1] = '\0'; // Remove Enter character on Windows
-        char *test;
-        if ((test = get_tag(tag)) != NULL) {
-          strcpy(tag, test);
-        }
-        #endif
         char *result;
         if (tag[0] != '\0') {
           if ((result = get_release_group(tag)) != NULL) {
@@ -422,6 +423,14 @@ void pkgrename(char *filename) {
             printf("Using \"%s\" as release.\n", result);
             strncpy(tag_release, result, MAX_TAG_LEN);
             tag_release[MAX_TAG_LEN] = '\0';
+          } else if (strcmp(tag, "Backport") == 0) {
+            if (backport) {
+              printf("Backport tag disabled.\n");
+              backport = NULL;
+            } else {
+              printf("Backport tag enabled.\n");
+              backport = "Backport";
+            }
           } else {
             printf("\"%s\" not found in the database. If you want to help the "
               "database grow, please\nreport missing data at \"%s\".\n",
@@ -479,6 +488,15 @@ void pkgrename(char *filename) {
       case 'q': // [Q]uit: exit the program
         exit(0);
         break;
+      case 'b': // [B]ackport: toggle backport tag
+        if (backport) {
+          printf("\nBackport tag disabled.\n\n");
+          backport = NULL;
+        } else {
+          printf("\nBackport tag enabled.\n\n");
+          backport = "Backport";
+        }
+        break;
     }
   }
 
@@ -488,11 +506,8 @@ void pkgrename(char *filename) {
 }
 
 int main(int argc, char *argv[]) {
-  // Set terminal to noncanonical input processing mode
   initialize_terminal();
-  #ifndef _WIN32
   raw_terminal();
-  #endif
 
   parse_options(argc, argv);
 

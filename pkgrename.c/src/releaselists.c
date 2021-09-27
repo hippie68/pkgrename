@@ -13,7 +13,7 @@
 
 struct rls_list {
   char *name;
-  char *alt_search;
+  char *alt_name;
 };
 
 // List of release groups; [0]: Name, [1]: Additional search string
@@ -52,6 +52,7 @@ static struct rls_list uploaders[] = {
   {"CyB1K", "cybik"},
   {"OPOISSO893", "opoisso"},
   {"SeanP2500", "seanp"},
+  {"VikaCaptive"},
   {NULL}
 };
 
@@ -61,7 +62,7 @@ char *get_release_group(char *string) {
   while (p->name != NULL) {
     if (strcasestr(string, p->name) != NULL)
       return p->name;
-    if (p->alt_search != NULL && strcasestr(string, p->alt_search) != NULL)
+    if (p->alt_name != NULL && strcasestr(string, p->alt_name) != NULL)
       return p->name;
     p++;
   }
@@ -75,7 +76,7 @@ char *get_uploader(char *string) {
   while (p->name != NULL) {
     if (strcasestr(string, p->name) != NULL)
       return p->name;
-    if (p->alt_search != NULL && strcasestr(string, p->alt_search) != NULL)
+    if (p->alt_name != NULL && strcasestr(string, p->alt_name) != NULL)
       return p->name;
     p++;
   }
@@ -104,19 +105,19 @@ char *get_tag(char *string) {
 
   p = release_groups;
   while (p->name != NULL) {
-    if (strings_match(p->name, string)) {
+    if (strings_match(p->name, string))
       return p->name;
-    }
     p++;
   }
 
   p = uploaders;
   while (p->name != NULL) {
-    if (strings_match(p->name, string)) {
+    if (strings_match(p->name, string))
       return p->name;
-    }
     p++;
   }
+
+  if (strings_match("Backport", string)) return "Backport";
 
   return NULL;
 }

@@ -64,7 +64,7 @@ void search_online(char *content_id, char *title) {
   int result = _pclose(pipe);
   if (result != 0) {
     fprintf(stderr, "An error occured (error code \"%d\").\n"
-      "See https://curl.se/libcurl/c/libcurl-errors.html\n", result);
+      "See \"https://curl.se/libcurl/c/libcurl-errors.html\".\n", result);
   }
 
   //printf("Output: %s\n", curl_output); // DEBUG
@@ -83,8 +83,8 @@ void search_online(char *content_id, char *title) {
       } else goto fail; // String is empty
     } else {
       fprintf(stderr, BRIGHT_RED "Error while searching online. Please contact"
-        " the developer at https://github.com/hippie68/pkgrename/issues and "
-        "show him this link: %s.\n" RESET, url);
+        " the developer at \"https://github.com/hippie68/pkgrename/issues\" and "
+        "show him this link: \"%s\".\n" RESET, url);
     }
   } else {
     fail:

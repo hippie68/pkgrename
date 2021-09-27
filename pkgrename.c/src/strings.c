@@ -68,55 +68,68 @@ inline char *strreplace(char *string, char *search, char *replace) {
   return p;
 }
 
-// Converts a string to mixed-case style
-void mixed_case(char *string) {
-  string[0] = toupper(string[0]);
-  for (int i = 1; i < strlen(string); i++) {
-    if (isspace(string[i - 1]) || is_in_set(string[i - 1], ":-;~_1234567890")) {
-      string[i] = toupper(string[i]);
+// Converts a string (title, to be specific) to mixed-case style
+void mixed_case(char *title) {
+  int title_is_prepared = 0;
+  int len = strlen(title);
+
+  // Apply mixed-case style
+  title[0] = toupper(title[0]);
+  for (int i = 1; i < len; i++) {
+    if (isspace(title[i - 1]) || is_in_set(title[i - 1], ":-;~_1234567890")) {
+      title[i] = toupper(title[i]);
     } else {
-      string[i] = tolower(string[i]);
+      title[i] = tolower(title[i]);
     }
   }
 
+  // Prepare title for special case rules comparisons by adding a space
+  if (len < MAX_TITLE_LEN) {
+    title[len] = ' ';
+    title[len + 1] = '\0';
+    title_is_prepared = 1;
+  }
+
   // Special case rules
-  strreplace(string, "Dc", "DC");
-  strreplace(string, "Dlc", "DLC");
-  strreplace(string, "Dx", "DX");
-  strreplace(string, "Hd", "HD");
-  strreplace(string, "hd", "HD");
-  strreplace(string, "Vs", "vs");
-  strreplace(string, "Vr ", "VR ");
-  strreplace(string, "Vr\0", "VR\0");
-  strreplace(string, "Iii", "III");
-  strreplace(string, "Ii", "II");
-  strreplace(string, " Iv", " IV");
-  strreplace(string, " Iv:", " IV:");
-  strreplace(string, " Iv\0", " IV\0");
-  strreplace(string, "Viii", "VIII");
-  strreplace(string, "Vii", "VII");
-  strreplace(string, " Vi ", " VI ");
-  strreplace(string, " Vi:", " VI:");
-  strreplace(string, " Vi\0", " VI\0");
-  strreplace(string, "Ix", "IX");
-  strreplace(string, "Xiii", "XIII");
-  strreplace(string, "Xii", "XII");
-  strreplace(string, "Xiv", "XIV");
-  strreplace(string, "Xi", "XI");
-  strreplace(string, "Xvi", "XVI");
-  strreplace(string, "Xv", "XV");
-  strreplace(string, "Playstation", "PlayStation");
+  strreplace(title, "Dc", "DC");
+  strreplace(title, "Dlc", "DLC");
+  strreplace(title, "Dx", "DX");
+  strreplace(title, "Hd", "HD");
+  strreplace(title, "hd", "HD");
+  strreplace(title, "Vs", "vs");
+  strreplace(title, "Vr ", "VR ");
+  strreplace(title, "Iii", "III");
+  strreplace(title, "Ii", "II");
+  strreplace(title, " Iv:", " IV:");
+  strreplace(title, " Iv ", " IV ");
+  strreplace(title, "Viii", "VIII");
+  strreplace(title, "Vii", "VII");
+  strreplace(title, " Vi ", " VI ");
+  strreplace(title, " Vi:", " VI:");
+  strreplace(title, "Ix", "IX");
+  strreplace(title, "Xiii", "XIII");
+  strreplace(title, "Xii", "XII");
+  strreplace(title, "Xiv", "XIV");
+  strreplace(title, "Xi", "XI");
+  strreplace(title, "Xvi", "XVI");
+  strreplace(title, "Xv", "XV");
+  strreplace(title, "Playstation", "PlayStation");
 
   // Game-specific rules
-  strreplace(string, "Crosscode", "CrossCode");
-  strreplace(string, "Littlebigplanet", "LittleBigPlanet");
-  strreplace(string, "Nier", "NieR");
-  strreplace(string, "Ok K.o.", "OK K.O.");
-  strreplace(string, "Pixeljunk", "PixelJunk");
-  strreplace(string, "Singstar", "SingStar");
-  strreplace(string, "Snk", "SNK");
-  strreplace(string, "Wwe", "WWE");
-  strreplace(string, "Xcom", "XCOM");
+  strreplace(title, "Crosscode", "CrossCode");
+  strreplace(title, "Littlebigplanet", "LittleBigPlanet");
+  strreplace(title, "Nier", "NieR");
+  strreplace(title, "Ok K.o.", "OK K.O.");
+  strreplace(title, "Pixeljunk", "PixelJunk");
+  strreplace(title, "Singstar", "SingStar");
+  strreplace(title, "Snk", "SNK");
+  strreplace(title, "Wwe", "WWE");
+  strreplace(title, "Xcom", "XCOM");
+
+  // Undo title preparation
+  if (title_is_prepared) {
+    title[len] = '\0';
+  }
 }
 
 int lower_strcmp(char *string1, char *string2) {

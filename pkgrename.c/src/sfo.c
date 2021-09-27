@@ -9,6 +9,7 @@
 #include <string.h>
 
 #define MAGIC_NUMBER_PKG 1414415231
+#define MAGIC_NUMBER_PS3 1196118143
 #define MAGIC_NUMBER_PARAM_SFO 1179865088
 #define TYPE_SPECIAL_MODE_STRING 0
 #define TYPE_STRING 1
@@ -82,7 +83,7 @@ struct sfo_parameter *sfo_read(int *count, char *filename) {
   // Load param.sfo
   uint32_t magic;
   magic = get_uint32(0);
-  if (magic == MAGIC_NUMBER_PKG) {
+  if (magic == MAGIC_NUMBER_PKG || magic == MAGIC_NUMBER_PS3) {
     load_param_sfo();
   } else {
     *count = 1;
