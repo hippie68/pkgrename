@@ -1,7 +1,6 @@
 # pkgrename.c
 
 pkgrename.c is a standalone, advanced version of the original Bash script, written in C. It currently works on Linux and Windows, possibly on other systems, too.
-As this version is still being worked on, please use it with care and try a read-only run first (option -n).
 
 The program in action looks like this:
 
@@ -74,15 +73,16 @@ The program's help screen ("pkgrename --help"):
       - [Y]es     Rename the file as seen.
       - [N]o      Skip the file and drops all changes.
       - [A]ll     Same as yes, but also for all future files.
-      - [E]dit    Prompt to manually edit the title.
-      - [T]ag     Prompt to enter a release group or a release.
+      - [E]dit    Enter a new title.
+      - [T]ag     Enter a release group or a release.
       - [M]ix     Convert the letter case to mixed-case style.
       - [O]nline  Search the PS Store online for title information.
       - [R]eset   Undo all changes.
       - [C]hars   Reveal special characters in the title.
       - [S]FO     Show file's param.sfo information.
       - [Q]uit    Exit the program.
-    
+      - [B]       (Hidden) Toggle the "Backport" tag.
+
     Options:
     --------
       -f, --force           Force-prompt even if file names match.
@@ -119,7 +119,7 @@ Please report bugs, make feature requests, or add missing data at https://github
 Renames PS4 PKG files based on local param.sfo information and predefined patterns.
 Requires Bash script or program "sfo" (https://github.com/hippie68/sfo) in your $PATH environment variable.
 
-Usage: `pkgrename [options] [file/directory ...]`
+Usage: `pkgrename [options] [file|directory ...]`
 
 Options:
 
