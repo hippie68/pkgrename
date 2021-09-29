@@ -115,6 +115,17 @@ Or download a compiled Windows release at https://github.com/hippie68/pkgrename/
 
 Please report bugs, make feature requests, or add missing data at https://github.com/hippie68/pkgrename/issues.
 
+#### For Windows: How to run pkgrename.exe from anywhere with modified arguments:
+
+Put pkgrename.exe in a folder (you can also put other command line programs there).
+Inside that folder, create a new file named "pkgrename.bat" and open it with Notepad.
+Write the following lines, while replacing "ARGUMENTS" with your preferred arguments (e.g.: "-m --pattern "%title% [%title_id%]"), including the quotes:
+
+    @echo off
+    pkgrename.exe "ARGUMENTS" %*
+
+Now click Start, type "env" and select "Edit environment variables for your account". Select "Path" and click edit. Select "New" and enter the folder where you put pkgrename.bat into. Close and reopen any opened command line windows for the changes to apply.
+
 # pkgrename (original Bash script)
 Renames PS4 PKG files based on local param.sfo information and predefined patterns.
 Requires Bash script or program "sfo" (https://github.com/hippie68/sfo) in your $PATH environment variable.
