@@ -34,6 +34,7 @@ static struct rls_list release_groups[] = {
   {"LiGHTFORCE", "lfc"},
   {"MarvTM"},
   {"MOEMOE", "moe-"},
+  {"PiKMiN"},
   {"Playable"},
   {"PRELUDE"},
   {"PROTOCOL"},
@@ -52,6 +53,7 @@ static struct rls_list uploaders[] = {
   {"CyB1K", "cybik"},
   {"OPOISSO893", "opoisso"},
   {"SeanP2500", "seanp"},
+  {"TKJ13"},
   {"VikaCaptive"},
   {NULL}
 };
