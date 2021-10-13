@@ -34,7 +34,6 @@ static struct rls_list release_groups[] = {
   {"LiGHTFORCE", "lfc"},
   {"MarvTM"},
   {"MOEMOE", "moe-"},
-  {"PiKMiN"},
   {"Playable"},
   {"PRELUDE"},
   {"PROTOCOL"},
