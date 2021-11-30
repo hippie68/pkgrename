@@ -21,6 +21,9 @@ static int create_url(char url[URL_LEN], char *content_id) {
     case 'E':
       prefix = "https://store.playstation.com/en-gb/product/";
       break;
+    case 'H':
+      prefix = "https://store.playstation.com/en-hk/product/";
+      break;
     case 'J':
       prefix = "https://store.playstation.com/ja-jp/product/";
       break;
