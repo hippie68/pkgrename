@@ -19,6 +19,9 @@ int option_verbose = 0;
 int option_yes_to_all = 0;
 
 void print_version(void) {
+  #ifdef _WIN32
+  printf("Version: v1.0\n");
+  #endif
   printf("Release date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
@@ -31,33 +34,41 @@ void print_usage(void) {
   "Usage: pkgrename [options] [file|directory ...]\n"
   "\n"
   "Renames PS4 PKGs to match a file name pattern. The default pattern is:\n"
-  "\"%%title%% [%%type%%] [%%title_id%%] [%%release_group%%] [%%release%%] [%%backport%%]\"\n"
+  "\"%%title%% [%%dlc%%] [{v%%app_ver%%}] [%%title_id%%] [%%release_group%%] [%%release%%] [%%backport%%]\"\n"
   "\n"
   "Pattern variables:\n"
   "------------------\n"
   "  Name             Example\n"
   "  ----------------------------------------------------------------------\n"
+  "  %%app%%            \"App\"\n"
   "  %%app_ver%%        \"1.50\"\n"
   "  %%backport%%       \"Backport\" (*)\n"
   "  %%category%%       \"gp\"\n"
   "  %%content_id%%     \"EP4497-CUSA05571_00-00000000000GOTY1\"\n"
+  "  %%dlc%%            \"DLC\"\n"
   "  %%firmware%%       \"4.70\"\n"
+  "  %%game%%           \"Game\"\n"
+  "  %%other%%          \"Other\"\n"
+  "  %%patch%%          \"Update\"\n"
   "  %%release_group%%  \"PRELUDE\" (*)\n"
   "  %%release%%        \"John Doe\" (*)\n"
   "  %%sdk%%            \"4.50\"\n"
   "  %%size%%           \"0.11 GiB\"\n"
   "  %%title%%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
   "  %%title_id%%       \"CUSA05571\"\n"
-  "  %%type%%           \"Update 1.50\" (**)\n"
+  "  %%type%%           \"Update\" (**)\n"
   "  %%version%%        \"1.00\"\n"
   "\n"
   "  (*) Backports not targeting 5.05 are detected by searching file names for\n"
   "  strings \"BP\", \"Backport\", and \"BACKPORT\". The same principle applies\n"
   "  to release groups and releases.\n"
   "\n"
-  "  (**) %%type%% is %%category%% mapped to \"Game,Update %%app_ver%%,DLC,App\".\n"
-  "  These default strings, up to 5, can be changed via option \"--set-type\":\n"
-  "    --set-type \"Game,Patch,DLC,App,Other\" (no spaces before or after commas)\n"
+  "  (**) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
+  "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
+  "    --set-type \"Game,Patch,DLC,-,-\" (no spaces before or after commas)\n"
+  "  Each string must have a value. To hide a category, use the value \"-\".\n"
+  "  %%app%%, %%dlc%%, %%game%%, %%other%%, and %%patch%% are mapped to their corresponding\n"
+  "  %%type%% values. They will be displayed if the PKG is of that specific category.\n"
   "\n"
   "  Only the first occurence of each pattern variable will be parsed.\n"
   "  After parsing, empty pairs of brackets, empty pairs of parentheses, and any\n"
@@ -110,6 +121,7 @@ void print_usage(void) {
   "  -m, --mixed-case      Automatically apply mixed-case letter style.\n"
   "      --no-placeholder  Hide characters instead of using placeholders.\n"
   "  -n, --no-to-all       Do not prompt; do not actually rename any files.\n"
+  "                        This can be used to do a test run.\n"
   "  -o, --online          Automatically search online for %%title%%.\n"
   "  -p, --pattern x       Set the file name pattern to string x.\n"
   "      --placeholder x   Set the placeholder character to x.\n"
@@ -151,13 +163,27 @@ static inline void optf_print_database() {
 }
 static inline void optf_recursive() { option_recursive = 1; }
 static inline void optf_set_type(char *argument) {
-  char backup[strlen(argument) + 1];
-  strcpy(backup, argument);
+  // Exit if wrong number of arguments
+  int comma_count = 0;
+  for (int i = 0; i < strlen(argument); i++) {
+    if (argument[i] == ',') comma_count++;
+  }
+  if (comma_count != 4) {
+    fprintf(stderr, "Option --set-type needs exactly 5 comma-separated arguments.");
+    exit(1);
+  }
+
+  // Parse arguments
   custom_category.game = strtok(argument, ",");
+  if (strcmp(custom_category.game, "-") == 0) custom_category.game = "";
   custom_category.patch = strtok(NULL, ",");
+  if (strcmp(custom_category.patch, "-") == 0) custom_category.patch = "";
   custom_category.dlc = strtok(NULL, ",");
+  if (strcmp(custom_category.dlc, "-") == 0) custom_category.dlc = "";
   custom_category.app = strtok(NULL, ",");
+  if (strcmp(custom_category.app, "-") == 0) custom_category.app = "";
   custom_category.other = strtok(NULL, ",");
+  if (strcmp(custom_category.other, "-") == 0) custom_category.other = "";
 }
 static inline void optf_underscores() { option_underscores = 1; }
 static inline void optf_verbose() { option_verbose = 1; }

@@ -26,11 +26,12 @@
 #else
 #include <dirent.h>
 #include <signal.h>
+#include <stdio_ext.h> // For __fpurge(); requires the GNU C Library
 #define DIR_SEPARATOR '/'
 #endif
 
 char format_string[MAX_FORMAT_STRING_LEN] =
-  "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]";
+  "%title% [%dlc%] [{v%app_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]";
 struct custom_category custom_category =
   {"Game", "Update %app_ver%", "DLC", "App", NULL};
 int first_run;
@@ -88,11 +89,16 @@ void pkgrename(char *filename) {
   struct sfo_parameter *params;
 
   // Internal pattern variables
+  char *app = NULL;
   char *app_ver = NULL;
   char *backport = NULL;
   char *category = NULL;
   char *content_id = NULL;
+  char *dlc = NULL;
   char firmware[9] = "";
+  char *game = NULL;
+  char *other = NULL;
+  char *patch = NULL;
   char *release_group = NULL;
   char *release = NULL;
   char sdk[6] = "";
@@ -153,14 +159,19 @@ void pkgrename(char *filename) {
       category = params[i].string;
       if (strcmp(params[i].string, "gd") == 0) {
         type = custom_category.game;
+        game = type;
       } else if (strstr(params[i].string, "gp") != NULL) {
         type = custom_category.patch;
+        patch = type;
       } else if (strcmp(params[i].string, "ac") == 0) {
         type = custom_category.dlc;
+        dlc = type;
       } else if (params[i].string[0] == 'g' && params[i].string[1] == 'd') {
         type = custom_category.app;
+        app = type;
       } else {
         type = custom_category.other;
+        other = type;
       }
     } else if (strcmp(params[i].name, "CONTENT_ID") == 0) {
       content_id = params[i].string;
@@ -246,11 +257,17 @@ void pkgrename(char *filename) {
     strcpy(new_basename, format_string);
     // %type% first, as it may contain other pattern variables
     strreplace(new_basename, "%type%", type);
+
+    strreplace(new_basename, "%app%", app);
     strreplace(new_basename, "%app_ver%", app_ver);
     strreplace(new_basename, "%backport%", backport);
     strreplace(new_basename, "%category%", category);
     strreplace(new_basename, "%content_id%", content_id);
+    strreplace(new_basename, "%dlc%", dlc);
     strreplace(new_basename, "%firmware%", firmware);
+    strreplace(new_basename, "%game%", game);
+    strreplace(new_basename, "%other%", other);
+    strreplace(new_basename, "%patch%", patch);
     if (tag_release_group[0] != '\0') {
       strreplace(new_basename, "%release_group%", tag_release_group);
     } else {
@@ -362,6 +379,11 @@ void pkgrename(char *filename) {
     /***************************************************************************
      * Interactive prompt
      **************************************************************************/
+
+    // Clear stdin immediately
+    #ifndef _WIN32
+    __fpurge(stdin);
+    #endif
 
     // Read user input
     printf("OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");

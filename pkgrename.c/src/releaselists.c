@@ -34,6 +34,7 @@ static struct rls_list release_groups[] = {
   {"LiGHTFORCE", "lfc"},
   {"MarvTM"},
   {"MOEMOE", "moe-"},
+  {"PiKMiN"},
   {"Playable"},
   {"PRELUDE"},
   {"PROTOCOL"},
@@ -60,11 +61,19 @@ static struct rls_list uploaders[] = {
 // Detects release group in a string and returns a pointer containing the group.
 char *get_release_group(char *string) {
   struct rls_list *p = release_groups;
+  char *hit;
+
   while (p->name != NULL) {
-    if (strcasestr(string, p->name) != NULL)
-      return p->name;
-    if (p->alt_name != NULL && strcasestr(string, p->alt_name) != NULL)
-      return p->name;
+    if ((hit = strcasestr(string, p->name)) != NULL) {
+      if (hit != string && !isalpha((hit - 1)[0]) && !isalpha((hit + strlen(p->name))[0])) {
+        return p->name;
+      }
+    }
+    if (p->alt_name != NULL && (hit = strcasestr(string, p->alt_name)) != NULL) {
+      if (hit != string && !isalpha((hit - 1)[0]) && !isalpha((hit + strlen(p->name))[0])) {
+        return p->name;
+      }
+    }
     p++;
   }
 
