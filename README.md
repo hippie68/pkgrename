@@ -6,7 +6,7 @@ The program in action looks like this:
 
     $ pkgrename
        "totally_not_helpful_filename.pkg"
-    => "Baldur's Gate and Baldur's Gate II_ Enhanced Editions [Update 1.02] [CUSA15671].pkg"
+    => "Baldur's Gate and Baldur's Gate II_ Enhanced Editions [v1.02] [CUSA15671].pkg"
     OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: y
 
 The program's help screen ("pkgrename --help"):
@@ -14,33 +14,41 @@ The program's help screen ("pkgrename --help"):
     Usage: pkgrename [options] [file|directory ...]
     
     Renames PS4 PKGs to match a file name pattern. The default pattern is:
-    "%title% [%type%] [%title_id%] [%release_group%] [%release%] [%backport%]"
+    "%title% [%dlc%] [{v%app_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
     
     Pattern variables:
     ------------------
       Name             Example
       ----------------------------------------------------------------------
+      %app%            "App"
       %app_ver%        "1.50"
       %backport%       "Backport" (*)
       %category%       "gp"
       %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
+      %dlc%            "DLC"
       %firmware%       "4.70"
+      %game%           "Game"
+      %other%          "Other"
+      %patch%          "Update"
       %release_group%  "PRELUDE" (*)
       %release%        "John Doe" (*)
       %sdk%            "4.50"
       %size%           "0.11 GiB"
       %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
       %title_id%       "CUSA05571"
-      %type%           "Update 1.50" (**)
+      %type%           "Update" (**)
       %version%        "1.00"
     
       (*) Backports not targeting 5.05 are detected by searching file names for
       strings "BP", "Backport", and "BACKPORT". The same principle applies
       to release groups and releases.
     
-      (**) %type% is %category% mapped to "Game,Update %app_ver%,DLC,App".
-      These default strings, up to 5, can be changed via option "--set-type":
-        --set-type "Game,Patch,DLC,App,Other" (no spaces before or after commas)
+      (**) %type% is %category% mapped to "Game,Update,DLC,App,Other".
+      These 5 default strings can be changed via option "--set-type", e.g.:
+        --set-type "Game,Patch,DLC,-,-" (no spaces before or after commas)
+      Each string must have a value. To hide a category, use the value "-".
+      %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
+      %type% values. They will be displayed if the PKG is of that specific category.
     
       Only the first occurence of each pattern variable will be parsed.
       After parsing, empty pairs of brackets, empty pairs of parentheses, and any
@@ -73,8 +81,8 @@ The program's help screen ("pkgrename --help"):
       - [Y]es     Rename the file as seen.
       - [N]o      Skip the file and drops all changes.
       - [A]ll     Same as yes, but also for all future files.
-      - [E]dit    Enter a new title.
-      - [T]ag     Enter a release group or a release.
+      - [E]dit    Prompt to manually edit the title.
+      - [T]ag     Prompt to enter a release group or a release.
       - [M]ix     Convert the letter case to mixed-case style.
       - [O]nline  Search the PS Store online for title information.
       - [R]eset   Undo all changes.
@@ -82,16 +90,17 @@ The program's help screen ("pkgrename --help"):
       - [S]FO     Show file's param.sfo information.
       - [Q]uit    Exit the program.
       - [B]       (Hidden) Toggle the "Backport" tag.
-
+    
     Options:
     --------
-      -f, --force           Force-prompt even if file names match.
+      -f, --force           Force-prompt even when file names match.
       -h, --help            Print this help screen.
       -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
                             %firmware%, %sdk%, and %version%.
       -m, --mixed-case      Automatically apply mixed-case letter style.
           --no-placeholder  Hide characters instead of using placeholders.
       -n, --no-to-all       Do not prompt; do not actually rename any files.
+                            This can be used for a test run.
       -o, --online          Automatically search online for %title%.
       -p, --pattern x       Set the file name pattern to string x.
           --placeholder x   Set the placeholder character to x.
