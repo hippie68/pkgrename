@@ -50,7 +50,7 @@ static struct rls_list release_groups[] = {
 // List of uploaders
 static struct rls_list uploaders[] = {
   {"Arczi"},
-  {"CyB1K", "cybik"},
+  {"CyB1K", "rayku22"},
   {"OPOISSO893", "opoisso"},
   {"SeanP2500", "seanp"},
   {"TKJ13"},
@@ -64,14 +64,25 @@ char *get_release_group(char *string) {
   char *hit;
 
   while (p->name != NULL) {
-    if ((hit = strcasestr(string, p->name)) != NULL) {
-      if (hit != string && !isalpha((hit - 1)[0]) && !isalpha((hit + strlen(p->name))[0])) {
-        return p->name;
+    // Search for full name
+    hit = string;
+    while ((hit = strcasestr(hit, p->name)) != NULL) {
+      // Make sure it's a word
+      if (!isalpha((hit + strlen(p->name))[0])) { // Ends like a word
+        if (hit == string) return p->name; // Starts like a word
+        if (!isalpha((hit - 1)[0])) return p->name; // Starts like a word
       }
+      hit += strlen(p->name); // Make sure the whole string is parsed
     }
-    if (p->alt_name != NULL && (hit = strcasestr(string, p->alt_name)) != NULL) {
-      if (hit != string && !isalpha((hit - 1)[0]) && !isalpha((hit + strlen(p->name))[0])) {
-        return p->name;
+    // Search for short name
+    if (p->alt_name != NULL) {
+      hit = string;
+      while ((hit = strcasestr(hit, p->alt_name)) != NULL) {
+        if (!isalpha((hit + strlen(p->alt_name))[0])) {
+          if (hit == string) return p->name;
+          if (!isalpha((hit - 1)[0])) return p->name;
+        }
+        hit += strlen(p->alt_name);
       }
     }
     p++;
