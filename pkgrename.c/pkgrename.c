@@ -151,10 +151,13 @@ void pkgrename(char *filename) {
   }
   for (int i = 0; i < paramc; i++) {
     if (strcmp(params[i].name, "APP_VER") == 0) {
-      if (option_leading_zeros == 1)
+      if (option_leading_zeros == 1) {
         app_ver = params[i].string;
-      else if (params[i].string[0] == '0')
-        app_ver = &params[i].string[1];
+      } else if (params[i].string[0] == '0') {
+        app_ver = params[i].string + 1;
+      } else {
+        app_ver = params[i].string;
+      }
     } else if (strcmp(params[i].name, "CATEGORY") == 0) {
       category = params[i].string;
       if (strcmp(params[i].string, "gd") == 0) {
