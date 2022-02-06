@@ -29,8 +29,8 @@ static char WIN_KEY;
 // Sets terminal to noncanonical input mode (= no need to press enter)
 void raw_terminal() {
   #ifndef _WIN32
-  terminal.c_lflag &= ~(ICANON);
-  terminal.c_lflag &= ~(ECHO);
+  terminal.c_iflag &= ~(ICRNL);
+  terminal.c_lflag &= ~(ECHO | ICANON);
   tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
   #endif
 }
@@ -109,8 +109,8 @@ int getkey() {
 // Erase rest of the line
 static void clear_line() {
   #ifdef _WIN32
-  for (int i = 0; i < MAX_TAG_LEN; i++) printf(" ");
-  for (int i = 0; i < MAX_TAG_LEN; i++) printf("\b");
+  for (int i = 0; i <= MAX_TAG_LEN + 4; i++) printf(" ");
+  for (int i = 0; i <= MAX_TAG_LEN + 4; i++) printf("\b");
   #else
   printf("\033[0J");
   #endif
@@ -130,7 +130,7 @@ void scan_string(char *string, int max_size, char *default_string, char *(*f)())
   #else
   #define KEY_BACKSPACE 127
   #define KEY_DELETE 126
-  #define KEY_ENTER 10
+  #define KEY_ENTER 13
   #define KEY_LEFT_ARROW 68
   #define KEY_RIGHT_ARROW 67
   #endif

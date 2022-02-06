@@ -19,10 +19,7 @@ int option_verbose = 0;
 int option_yes_to_all = 0;
 
 void print_version(void) {
-  #ifdef _WIN32
-  printf("Version: v1.0\n");
-  #endif
-  printf("Release date: %s %s\n", __DATE__, __TIME__);
+  printf("Build date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -60,7 +57,7 @@ void print_usage(void) {
   "  %%version%%        \"1.00\"\n"
   "\n"
   "  (*) Backports not targeting 5.05 are detected by searching file names for\n"
-  "  strings \"BP\", \"Backport\", and \"BACKPORT\". The same principle applies\n"
+  "  the string \"Backport\" (case-insensitive). The same principle applies\n"
   "  to release groups and releases.\n"
   "\n"
   "  (**) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
@@ -149,7 +146,7 @@ static inline void optf_online() { option_online = 1; }
 static inline void optf_pattern(char *pattern) {
   size_t len = strlen(pattern);
   if (len >= MAX_FORMAT_STRING_LEN) {
-    fprintf(stderr, "Option %s: Pattern too long (%ld/%d characters).\n",
+    fprintf(stderr, "Option %s: Pattern too long (%lu/%d characters).\n",
       pattern, len, MAX_FORMAT_STRING_LEN - 1);
     exit(1);
   }
@@ -169,7 +166,7 @@ static inline void optf_set_type(char *argument) {
     if (argument[i] == ',') comma_count++;
   }
   if (comma_count != 4) {
-    fprintf(stderr, "Option --set-type needs exactly 5 comma-separated arguments.");
+    fprintf(stderr, "Option --set-type needs exactly 5 comma-separated arguments.\n");
     exit(1);
   }
 
@@ -207,14 +204,6 @@ void parse_options(int argc, char *argv[]) {
     {0,   "print-database", 0, optf_print_database},
     {'r', "recursive",      0, optf_recursive},
     {0,   "set-type",       1, optf_set_type},
-    //{'t', "tag",            1, optf_set_tag}, // TODO: Comma-separated list as argument; contains release groups and/or releases to rename the file with;
-                                              // If a tag is unknown, let the user know to report his favorite tags at GitHub
-                                              // Also put this into the interactive loop as [T]ag
-    /*
-    {0,   "set-keeper-1",   1, optf_set_keeper_1}, // TODO: Custom string to keep; perhaps with set-keeperx and __func; e.g. useful for keeping "Backport" in the file name
-    {0,   "set-keeper-2",   1, optf_set_keeper_2},
-    {0,   "set-keeper-3",   1, optf_set_keeper_3},
-    */
     {'u', "underscores",    0, optf_underscores},
     {'v', "verbose",        0, optf_verbose},
     {0,   "version",        0, optf_version},

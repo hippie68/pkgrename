@@ -2,8 +2,47 @@
 #include "../include/common.h"
 #include "../include/strings.h"
 
+#ifdef _WIN32
+#include <shlwapi.h>
+#define strcasestr StrStrIA
+#else
+#define _GNU_SOURCE // For strcasestr(), which is not standard
+#endif
+
 #include <ctype.h>
 #include <string.h>
+
+// Case-insensitively tests if a string contains a word
+inline char *strwrd(char *string, char *word) {
+  char *p = strcasestr(string, word);
+  size_t word_len = strlen(word);
+
+  if (p == NULL
+      || (p != string && isalnum(p[-1]))
+      || (p != string + (strlen(string) - word_len) && isalnum(p[word_len])))
+    return NULL;
+
+  return p;
+}
+
+// Case-insensitively replaces a word in a character array
+// Returns NULL on failure, otherwise the array
+// "string" must be of length MAX_FILENAME_LEN
+static char *replace_word(char *string, char *word, char *replace) {
+  char *p = strwrd(string, word);
+  size_t word_len = strlen(word);
+  size_t replace_len = strlen(replace);
+
+  if (p == NULL) return NULL;
+
+  // Abort if new string length would be too large
+  if (strlen(string) - word_len + replace_len > MAX_FILENAME_LEN) return NULL;
+
+  memmove(p + replace_len, p + word_len, strlen(p + word_len) + 1);
+  memcpy(p, replace, replace_len);
+
+  return string;
+}
 
 // Removes unused curly braces expressions; returns 0 on success
 static int curlycrunch(char *string, int position) {
@@ -70,7 +109,6 @@ inline char *strreplace(char *string, char *search, char *replace) {
 
 // Converts a string (title, to be specific) to mixed-case style
 void mixed_case(char *title) {
-  int title_is_prepared = 0;
   int len = strlen(title);
 
   // Apply mixed-case style
@@ -83,52 +121,243 @@ void mixed_case(char *title) {
     }
   }
 
-  // Prepare title for special case rules comparisons by adding a space
-  if (len < MAX_TITLE_LEN) {
-    title[len] = ' ';
-    title[len + 1] = '\0';
-    title_is_prepared = 1;
-  }
-
-  // Special case rules
-  strreplace(title, "Dc", "DC");
-  strreplace(title, "Dlc", "DLC");
-  strreplace(title, "Dx", "DX");
-  strreplace(title, "Hd", "HD");
-  strreplace(title, "hd", "HD");
-  strreplace(title, "Vs", "vs");
-  strreplace(title, "Vr ", "VR ");
-  strreplace(title, "Iii", "III");
-  strreplace(title, "Ii", "II");
-  strreplace(title, " Iv:", " IV:");
-  strreplace(title, " Iv ", " IV ");
-  strreplace(title, "Viii", "VIII");
-  strreplace(title, "Vii", "VII");
-  strreplace(title, " Vi ", " VI ");
-  strreplace(title, " Vi:", " VI:");
-  strreplace(title, "Ix", "IX");
-  strreplace(title, "Xiii", "XIII");
-  strreplace(title, "Xii", "XII");
-  strreplace(title, "Xiv", "XIV");
-  strreplace(title, "Xi", "XI");
-  strreplace(title, "Xvi", "XVI");
-  strreplace(title, "Xv", "XV");
-  strreplace(title, "Playstation", "PlayStation");
-
-  // Game-specific rules
-  strreplace(title, "Crosscode", "CrossCode");
-  strreplace(title, "Littlebigplanet", "LittleBigPlanet");
-  strreplace(title, "Nier", "NieR");
-  strreplace(title, "Ok K.o.", "OK K.O.");
-  strreplace(title, "Pixeljunk", "PixelJunk");
-  strreplace(title, "Singstar", "SingStar");
-  strreplace(title, "Snk", "SNK");
-  strreplace(title, "Wwe", "WWE");
-  strreplace(title, "Xcom", "XCOM");
-
-  // Undo title preparation
-  if (title_is_prepared) {
-    title[len] = '\0';
+  // Make sure certain words are spelled correctly
+  char *special_words[] = {
+    // Roman numerals
+    "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII",
+    "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XVIX", "XX",
+    // Games
+    "20XX",
+    "2Dark",
+    "2K",
+    "2K14",
+    "2K15",
+    "2K16",
+    "2K17",
+    "2K18",
+    "2K19",
+    "2K20",
+    "2K21",
+    "2K22",
+    "2X",
+    "3D",
+    "4K",
+    "ABC",
+    "ACA",
+    "ADR1FT",
+    "AER",
+    "AI",
+    "AO",
+    "ARK",
+    "ATV",
+    "AVICII",
+    "AdVenture",
+    "AereA",
+    "AeternoBlade",
+    "AnywhereVR",
+    "ArmaGallant",
+    "Avenger iX",
+    "BMX",
+    "BaZooka",
+    "BioHazard",
+    "BioShock",
+    "BlazBlue",
+    "BlazeRush",
+    "BloodRayne",
+    "BoxVR",
+    "CastleStorm",
+    "ChromaGun",
+    "CrossCode",
+    "CruisinMix",
+    "DC",
+    "DCL",
+    "DEX",
+    "DG2",
+    "DX",
+    "DJMax",
+    "DLC",
+    "DS",
+    "DUB",
+    "DWVR",
+    "DarkWatch",
+    "DayZ",
+    "DmC",
+    "DreamMix",
+    "DreamWorks",
+    "EA",
+    "EBKore",
+    "ECHO",
+    "EFootball",
+    "EP",
+    "ESP",
+    "ESPN",
+    "EVE",
+    "EX",
+    "EXA",
+    "EarthNight",
+    "FEZ",
+    "FIA",
+    "FIFA",
+    "F.I.S.T.",
+    "FX2",
+    "FX3",
+    "FantaVision",
+    "Fate/Extella",
+    "FightN",
+    "FighterZ",
+    "FlOw",
+    "FlatOut",
+    "GI",
+    "GODS",
+    "GP",
+    "Gris",
+    "GU",
+    "GoldenEye",
+    "GreedFall",
+    "HD",
+    "HOA",
+    "HiQ",
+    "Hitman GO",
+    "ICO",
+    "IF",
+    "InFamous",
+    "IxSHE",
+    "JJ",
+    "JoJos",
+    "JoyRide",
+    "JumpJet",
+    "KO",
+    "KOI",
+    "KeyWe",
+    "KickBeat",
+    "LA Cops",
+    "LittleBigPlanet",
+    "LocoRoco",
+    "LoveR Kiss",
+    "MLB",
+    "MS",
+    "MV",
+    "MX",
+    "MXGP",
+    "MalFunction",
+    "MasterCube",
+    "McIlroy",
+    "McMorris",
+    "MechWarrior",
+    "MediEvil",
+    "MegaDrive",
+    "MotoGP",
+    "MudRunner",
+    "NASCAR",
+    "NBA",
+    "N.E.R.O.",
+    "NESTS",
+    "NFL",
+    "NG",
+    "NHL",
+    "NT",
+    "NY",
+    "NecroDancer",
+    "NeoGeo",
+    "NeoWave",
+    "NeuroVoider",
+    "NieR",
+    "OG",
+    "OK",
+    "OMG",
+    "OhShape",
+    "OlliOlli",
+    "OutRun",
+    "OwlBoy",
+    "PAW",
+    "PES",
+    "PGA",
+    "PS2",
+    "PSN",
+    "PaRappa",
+    "PixARK",
+    "PixelJunk",
+    "PlayStation",
+    "Project CARS",
+    "ProStreet",
+    "QuiVr",
+    "RBI",
+    "REV",
+    "RICO",
+    "RIGS",
+    "RiME",
+    "RPG",
+    "RemiLore",
+    "RiMS",
+    "RollerCoaster",
+    "Romancing SaGa",
+    "RyoRaiRai",
+    "SD",
+    "SG/ZH",
+    "SH1FT3R",
+    "SNES",
+    "SNK",
+    "SSX",
+    "SVC",
+    "SaGa Frontier",
+    "SaGa Scarlet",
+    "SkullGirls",
+    "SkyScrappers",
+    "SmackDown",
+    "SnowRunner",
+    "SoulCalibur",
+    "SpeedRunners",
+    "SpinMaster",
+    "SquarePants",
+    "SteamWorld",
+    "SuperChargers",
+    "SuperEpic",
+    "TMNT",
+    "Tron RUN/r",
+    "TT",
+    "TV",
+    "ToeJam",
+    "TowerFall",
+    "TrackMania",
+    "TrainerVR",
+    "UEFA",
+    "UFC",
+    "UN",
+    "UNO",
+    "UglyDolls",
+    "UnMetal",
+    "VA",
+    "VFR",
+    "VIIR",
+    "VR",
+    "VRobot",
+    "VRog",
+    "VirZOOM",
+    "WMD",
+    "WRC",
+    "WWE",
+    "WWII",
+    "WindJammers",
+    "XCOM",
+    "XD",
+    "XL",
+    "XXL",
+    "YU-NO",
+    "YoRHa",
+    "ZX",
+    "eSports",
+    "eX+",
+    "pFBA",
+    "pNES",
+    "pSNES",
+    "reQuest",
+    "tRrLM();",
+    "theHunter",
+    "vs",
+    NULL
+  };
+  for (int i = 0; special_words[i]; i++) {
+    replace_word(title, special_words[i], special_words[i]);
   }
 }
 

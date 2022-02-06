@@ -1,3 +1,6 @@
+#ifndef GETOPTS_H
+#define GETOPTS_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,8 +29,10 @@ int get_opts(int argc, char *argv[], struct OPTION options[]);
 
 // After calling get_opts(), non-options are stored in
 // these variables:
-int noptc;
-char **nopts;  // nopts[0] will be argv[0]
+extern int noptc;
+extern char **nopts;  // nopts[0] will be argv[0]
 
 // Prints non-options
 void print_nopts();
+
+#endif

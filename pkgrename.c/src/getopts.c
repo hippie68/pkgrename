@@ -1,5 +1,8 @@
 #include "../include/getopts.h"
 
+int noptc;
+char **nopts;
+
 // Parses an array of options and runs functions associated with options
 // Returns 0 on success, 1 on error
 int get_opts(int argc, char *argv[], struct OPTION options[]) {

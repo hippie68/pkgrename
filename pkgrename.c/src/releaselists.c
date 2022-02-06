@@ -1,11 +1,5 @@
 #include "../include/releaselists.h"
-
-#ifdef _WIN32
-#include <shlwapi.h>
-#define strcasestr StrStrIA
-#else
-#define _GNU_SOURCE // For strcasestr(), which is not standard
-#endif
+#include "../include/strings.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -51,40 +45,22 @@ static struct rls_list release_groups[] = {
 static struct rls_list uploaders[] = {
   {"Arczi"},
   {"CyB1K", "rayku22"},
+  {"High Speed", "highspeed33"},
   {"OPOISSO893", "opoisso"},
   {"SeanP2500", "seanp"},
   {"TKJ13"},
   {"VikaCaptive"},
+  {"Whitehawkx"},
   {NULL}
 };
 
 // Detects release group in a string and returns a pointer containing the group.
 char *get_release_group(char *string) {
   struct rls_list *p = release_groups;
-  char *hit;
 
   while (p->name != NULL) {
-    // Search for full name
-    hit = string;
-    while ((hit = strcasestr(hit, p->name)) != NULL) {
-      // Make sure it's a word
-      if (!isalpha((hit + strlen(p->name))[0])) { // Ends like a word
-        if (hit == string) return p->name; // Starts like a word
-        if (!isalpha((hit - 1)[0])) return p->name; // Starts like a word
-      }
-      hit += strlen(p->name); // Make sure the whole string is parsed
-    }
-    // Search for short name
-    if (p->alt_name != NULL) {
-      hit = string;
-      while ((hit = strcasestr(hit, p->alt_name)) != NULL) {
-        if (!isalpha((hit + strlen(p->alt_name))[0])) {
-          if (hit == string) return p->name;
-          if (!isalpha((hit - 1)[0])) return p->name;
-        }
-        hit += strlen(p->alt_name);
-      }
-    }
+    if (strwrd(string, p->name)) return p->name;
+    if (p->alt_name != NULL && strwrd(string, p->alt_name)) return p->name;
     p++;
   }
 
@@ -94,11 +70,10 @@ char *get_release_group(char *string) {
 // Detects uploader in a string and returns a pointer containing the uploader.
 char *get_uploader(char *string) {
   struct rls_list *p = uploaders;
+
   while (p->name != NULL) {
-    if (strcasestr(string, p->name) != NULL)
-      return p->name;
-    if (p->alt_name != NULL && strcasestr(string, p->alt_name) != NULL)
-      return p->name;
+    if (strwrd(string, p->name) != NULL) return p->name;
+    if (p->alt_name != NULL && strwrd(string, p->alt_name)) return p->name;
     p++;
   }
 

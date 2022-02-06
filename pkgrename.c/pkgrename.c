@@ -82,8 +82,8 @@ void pkgrename(char *filename) {
   char *basename; // "filename" without path
   char lowercase_basename[MAX_FILENAME_LEN];
   char *path; // "filename" without file
-  char tag_release_group[MAX_TAG_LEN] = "";
-  char tag_release[MAX_TAG_LEN] = "";
+  char tag_release_group[MAX_TAG_LEN + 1] = "";
+  char tag_release[MAX_TAG_LEN + 1] = "";
   int spec_chars_current, spec_chars_total;
   int paramc;
   struct sfo_parameter *params;
@@ -220,10 +220,9 @@ void pkgrename(char *filename) {
   }
 
   // Detect backport
-  if (type == custom_category.patch && strcmp(sdk, "5.05") == 0) {
-    backport = "Backport";
-  } else if (strstr(lowercase_basename, "backport") != NULL ||
-      strstr(lowercase_basename, "bp") != NULL) {
+  if ((type == custom_category.patch && strcmp(sdk, "5.05") == 0)
+      || strwrd(lowercase_basename, "backport")
+      || strwrd(lowercase_basename, "bp")) {
     backport = "Backport";
   }
 
@@ -359,7 +358,7 @@ void pkgrename(char *filename) {
 
     // Exit if new basename too long
     if (strlen(new_basename) > MAX_FILENAME_LEN - 1) {
-      fprintf(stderr, "New filename too long (%ld/%d) characters).\n",
+      fprintf(stderr, "New filename too long (%lu/%d) characters).\n",
         strlen(new_basename) + 4, MAX_FILENAME_LEN - 1);
       exit(1);
     }
@@ -457,9 +456,6 @@ void pkgrename(char *filename) {
               backport = "Backport";
             }
           } else {
-            printf("\"%s\" not found in the database. If you want to help the "
-              "database grow, please\nreport missing data at \"%s\".\n",
-              tag, SUPPORT_LINK);
             printf("Using \"%s\" as release.\n", tag);
             strncpy(tag_release, tag, MAX_TAG_LEN);
             tag_release[MAX_TAG_LEN] = '\0';
