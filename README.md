@@ -114,11 +114,11 @@ The program's help screen ("pkgrename --help"):
 
 How to compile for Linux (requires libcurl development files):
 
-    gcc pkgrename.c src/*.c -o pkgrename -lcurl -s -O1
+    gcc pkgrename.c src/*.c -o pkgrename -lcurl -s -O3
 
 How to compile for Windows:
 
-    x86_64-w64-mingw32-gcc-win32 pkgrename.c src/*.c -o pkgrename.exe --static -s -O1    
+    x86_64-w64-mingw32-gcc-win32 pkgrename.c src/*.c -o pkgrename.exe --static -s -O3
 
 Or download a compiled Windows release at https://github.com/hippie68/pkgrename/releases.
 
