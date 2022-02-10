@@ -1,7 +1,6 @@
 #include "../include/colors.h"
 #include "../include/common.h"
 #include "../include/onlinesearch.h"
-#include "../include/options.h"
 
 #ifndef _WIN32
 #include <curl/curl.h>
@@ -38,13 +37,13 @@ static int create_url(char url[URL_LEN], char *content_id) {
 }
 
 #ifdef _WIN32
-void search_online(char *content_id, char *title) {
+void search_online(char *content_id, char *title, int silent) {
   char url[URL_LEN];
   char cmd[128];
 
   if (create_url(url, content_id) != 0) return;
 
-  printf("Searching online, please wait...\n");
+  if (!silent) printf("Searching online, please wait...\n");
 
   // Create cURL command
   strcpy(cmd, "curl.exe -Ls --connect-timeout 5 ");
@@ -80,7 +79,7 @@ void search_online(char *content_id, char *title) {
     if (end != NULL) {
       end[0] = '\0';
       if (strcmp(start, "") != 0) {
-        printf("Online title: \"%s\"\n", start);
+        if (!silent) printf("Online title: \"%s\"\n", start);
         strncpy(title, start, MAX_FILENAME_LEN);
         title[MAX_FILENAME_LEN - 1] = '\0';
       } else goto fail; // String is empty
@@ -91,7 +90,7 @@ void search_online(char *content_id, char *title) {
     }
   } else {
     fail:
-    printf("No online information found.\n");
+    if (!silent) printf("No online information found.\n");
   }
 }
 
@@ -109,7 +108,7 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
   return(nmemb);
 }
 
-void search_online(char *content_id, char *title) {
+void search_online(char *content_id, char *title, int silent) {
   char url[URL_LEN];
 
   CURL *curl = curl_easy_init();
@@ -120,7 +119,7 @@ void search_online(char *content_id, char *title) {
 
   if (create_url(url, content_id) != 0) goto exit;
 
-  printf("Searching online, please wait...\n");
+  if (!silent) printf("Searching online, please wait...\n");
 
   CURLcode result;
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
@@ -141,7 +140,7 @@ void search_online(char *content_id, char *title) {
     if (end != NULL) {
       end[0] = '\0';
       if (strcmp(start, "") != 0) {
-        printf("Online title: \"%s\"\n", start);
+        if (!silent) printf("Online title: \"%s\"\n", start);
         strncpy(title, start, MAX_FILENAME_LEN);
         title[MAX_FILENAME_LEN - 1] = '\0';
       } else goto fail; // String is empty
@@ -152,7 +151,7 @@ void search_online(char *content_id, char *title) {
     }
   } else {
     fail:
-    printf("No online information found.\n");
+    if (!silent) printf("No online information found.\n");
   }
 
   exit:

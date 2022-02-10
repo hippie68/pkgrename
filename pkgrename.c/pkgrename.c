@@ -34,7 +34,9 @@ char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%dlc%] [{v%app_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]";
 struct custom_category custom_category =
   {"Game", "Update %app_ver%", "DLC", "App", NULL};
-int first_run;
+char *tags[100];
+int tagc;
+int first_run = 1;
 
 void rename_file(char *filename, char *new_basename, char *path) {
   FILE *file;
@@ -72,12 +74,6 @@ void rename_file(char *filename, char *new_basename, char *path) {
 }
 
 void pkgrename(char *filename) {
-  if (first_run) {
-    printf("\n");
-  } else {
-    first_run = 1;
-  }
-
   char new_basename[MAX_FILENAME_LEN]; // Used to build the new PKG file's name
   char *basename; // "filename" without path
   char lowercase_basename[MAX_FILENAME_LEN];
@@ -129,8 +125,15 @@ void pkgrename(char *filename) {
     lowercase_basename[i] = tolower(lowercase_basename[i]);
   }
 
-  // Print current basename
-  printf("   \"%s\"\n", basename);
+  // Print current basename (early)
+  if (!option_compact) {
+    if (first_run) {
+      printf("   \"%s\"\n", basename);
+      first_run = 0;
+    } else {
+      printf("\n   \"%s\"\n", basename);
+    }
+  }
 
   // Load SFO parameters into variables
   params = sfo_read(&paramc, filename);
@@ -240,7 +243,11 @@ void pkgrename(char *filename) {
 
   // Option "online"
   if (option_online == 1) {
-    search_online(content_id, title);
+    if (option_compact) {
+      search_online(content_id, title, 1); // Silent search
+    } else {
+      search_online(content_id, title, 0);
+    }
   }
 
   // Option "mixed-case"
@@ -249,6 +256,7 @@ void pkgrename(char *filename) {
   }
 
   // User input loop
+  int first_loop = 1;
   char c;
   while(1) {
     /***************************************************************************
@@ -343,6 +351,21 @@ void pkgrename(char *filename) {
     strcat(new_basename, ".pkg");
 
     /**************************************************************************/
+
+    // Print current basename (late)
+    if (option_compact) {
+      if (strcmp(basename, new_basename) == 0) {
+        goto exit;
+      } else {
+        if (first_run) {
+          printf("   \"%s\"\n", basename);
+          first_run = 0;
+        } else if (first_loop) {
+          printf("\n   \"%s\"\n", basename);
+        }
+      }
+      first_loop = 0;
+    }
 
     // Print new basename
     printf("=> \"%s\"", new_basename);
@@ -469,7 +492,7 @@ void pkgrename(char *filename) {
         break;
       case 'o': // [O]nline: search the PlayStation store online for metadata
         printf("\n");
-        search_online(content_id, title);
+        search_online(content_id, title, 0);
         printf("\n");
         break;
       case 'r': // [R]eset: undo all changes

@@ -7,16 +7,17 @@
 #include <string.h>
 
 // Default options
-int option_force = 0;
-int option_mixed_case = 0;
-int option_no_placeholder = 0;
-int option_no_to_all = 0;
-int option_leading_zeros = 0;
-int option_online = 0;
-int option_recursive = 0;
-int option_underscores = 0;
-int option_verbose = 0;
-int option_yes_to_all = 0;
+int option_compact;
+int option_force;
+int option_mixed_case;
+int option_no_placeholder;
+int option_no_to_all;
+int option_leading_zeros;
+int option_online;
+int option_recursive;
+int option_underscores;
+int option_verbose;
+int option_yes_to_all;
 
 void print_version(void) {
   printf("Build date: %s %s\n", __DATE__, __TIME__);
@@ -57,8 +58,8 @@ void print_usage(void) {
   "  %%version%%        \"1.00\"\n"
   "\n"
   "  (*) Backports not targeting 5.05 are detected by searching file names for\n"
-  "  the string \"Backport\" (case-insensitive). The same principle applies\n"
-  "  to release groups and releases.\n"
+  "  the words \"BP\" and \"Backport\" (case-insensitive). The same principle\n"
+  "  applies to release groups and releases.\n"
   "\n"
   "  (**) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
   "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
@@ -67,7 +68,6 @@ void print_usage(void) {
   "  %%app%%, %%dlc%%, %%game%%, %%other%%, and %%patch%% are mapped to their corresponding\n"
   "  %%type%% values. They will be displayed if the PKG is of that specific category.\n"
   "\n"
-  "  Only the first occurence of each pattern variable will be parsed.\n"
   "  After parsing, empty pairs of brackets, empty pairs of parentheses, and any\n"
   "  remaining curly braces (\"[]\", \"()\", \"{\", \"}\") will be removed.\n"
   "\n"
@@ -111,6 +111,7 @@ void print_usage(void) {
   printf(
   "Options:\n"
   "--------\n"
+  "  -c, --compact         Hide files that are already renamed.\n"
   "  -f, --force           Force-prompt even when file names match.\n"
   "  -h, --help            Print this help screen.\n"
   "  -0, --leading-zeros   Show leading zeros in pattern variables %%app_ver%%,\n"
@@ -125,6 +126,10 @@ void print_usage(void) {
   "      --print-database  Print all current database entries.\n"
   "  -r, --recursive       Traverse subdirectories recursively.\n"
   "      --set-type x      Set %%type%% mapping to 5 comma-separated strings x.\n"
+  "      --tags x          Load additional %%release%% tags from comma-separated\n"
+  "                        string x (no spaces before or after commas).\n"
+  "      --tagfile x       Load additional %%release%% tags from text file x, one\n"
+  "                        tag per line.\n"
   "  -u, --underscores     Use underscores instead of spaces in file names.\n"
   "  -v, --verbose         Display additional infos.\n"
   "      --version         Print release date.\n"
@@ -132,33 +137,41 @@ void print_usage(void) {
   );
 }
 
-// Option functions
+// Option functions ------------------------------------------------------------
+
+static inline void optf_compact() { option_compact = 1; }
 static inline void optf_force() { option_force = 1; }
 static inline void optf_help() {
   print_usage();
   exit(0);
 }
+
 static inline void optf_leading_zeros() { option_leading_zeros = 1; }
 static inline void optf_mixed_case() { option_mixed_case = 1; }
 static inline void optf_no_placeholder() { option_no_placeholder = 1; }
 static inline void optf_no_to_all() { option_no_to_all = 1; }
 static inline void optf_online() { option_online = 1; }
+
 static inline void optf_pattern(char *pattern) {
   size_t len = strlen(pattern);
   if (len >= MAX_FORMAT_STRING_LEN) {
-    fprintf(stderr, "Option %s: Pattern too long (%lu/%d characters).\n",
-      pattern, len, MAX_FORMAT_STRING_LEN - 1);
+    fprintf(stderr, "Pattern too long (%lu/%d characters).\n", len,
+      MAX_FORMAT_STRING_LEN - 1);
     exit(1);
   }
   strcpy(format_string, pattern);
 }
+
 static inline void optf_placeholder(char *placeholder) { placeholder_char = placeholder[0]; }
+
 static inline void optf_print_database() {
   extern void print_database();
   print_database();
   exit(0);
 }
+
 static inline void optf_recursive() { option_recursive = 1; }
+
 static inline void optf_set_type(char *argument) {
   // Exit if wrong number of arguments
   int comma_count = 0;
@@ -182,16 +195,49 @@ static inline void optf_set_type(char *argument) {
   custom_category.other = strtok(NULL, ",");
   if (strcmp(custom_category.other, "-") == 0) custom_category.other = "";
 }
+
+static inline void optf_tagfile(char *file_name) {
+  FILE *tagfile = fopen(file_name, "r");
+  if (!tagfile) {
+    fprintf(stderr, "Option --tagfile: File not found: \"%s\".\n", file_name);
+    exit(1);
+  }
+
+  char buf[MAX_TAG_LEN + 1];
+  while (fgets(buf, sizeof buf, tagfile)) {
+    buf[strcspn(buf, "\r\n")] = '\0';
+    tags[tagc] = realloc(tags[tagc], strlen(buf) + 1);
+    memcpy(tags[tagc], buf, strlen(buf) + 1);
+    tagc++;
+  }
+  fclose(tagfile);
+}
+
+static inline void optf_tags(char *taglist) {
+  char *p = strtok(taglist, ",");
+  while (p) {
+    tags[tagc] = realloc(tags[tagc], strlen(p) + 1);
+    memcpy(tags[tagc], p, strlen(p) + 1);
+    tagc++;
+    p = strtok(NULL, ",");
+  }
+}
+
 static inline void optf_underscores() { option_underscores = 1; }
 static inline void optf_verbose() { option_verbose = 1; }
+
 static inline void optf_version() {
   print_version();
   exit(0);
 }
+
 static inline void optf_yes_to_all() { option_yes_to_all = 1; }
+
+// -----------------------------------------------------------------------------
 
 void parse_options(int argc, char *argv[]) {
   struct OPTION options[] = {
+    {'c', "compact",        0, optf_compact},
     {'f', "force",          0, optf_force},
     {'h', "help",           0, optf_help},
     {'0', "leading-zeros",  0, optf_leading_zeros},
@@ -204,6 +250,8 @@ void parse_options(int argc, char *argv[]) {
     {0,   "print-database", 0, optf_print_database},
     {'r', "recursive",      0, optf_recursive},
     {0,   "set-type",       1, optf_set_type},
+    {0,   "tagfile",        1, optf_tagfile},
+    {0,   "tags",           1, optf_tags},
     {'u', "underscores",    0, optf_underscores},
     {'v', "verbose",        0, optf_verbose},
     {0,   "version",        0, optf_version},

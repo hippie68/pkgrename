@@ -16,32 +16,36 @@
 inline char *strwrd(char *string, char *word) {
   char *p = strcasestr(string, word);
   size_t word_len = strlen(word);
+  size_t string_len = strlen(string);
 
-  if (p == NULL
-      || (p != string && isalnum(p[-1]))
-      || (p != string + (strlen(string) - word_len) && isalnum(p[word_len])))
-    return NULL;
+  do {
+    if (p == NULL) return NULL;
+    if ((p != string && isalnum(p[-1]))
+      || (p != string + (string_len - word_len) && isalnum(p[word_len]))) {
+      continue;
+    }
+    return p;
+  } while ((p = strcasestr(++p, word)));
 
-  return p;
+  return NULL;
 }
 
-// Case-insensitively replaces a word in a character array
-// Returns NULL on failure, otherwise the array
+// Case-insensitively replaces all occurences of a word in a character array
 // "string" must be of length MAX_FILENAME_LEN
-static char *replace_word(char *string, char *word, char *replace) {
-  char *p = strwrd(string, word);
+static void replace_word(char *string, char *word, char *replace) {
+  char *p = string;
   size_t word_len = strlen(word);
   size_t replace_len = strlen(replace);
 
-  if (p == NULL) return NULL;
+  while ((p = strwrd(p, word))) {
+    // Abort if new string length would be too large
+    if (strlen(string) - word_len + replace_len > MAX_FILENAME_LEN) return;
 
-  // Abort if new string length would be too large
-  if (strlen(string) - word_len + replace_len > MAX_FILENAME_LEN) return NULL;
+    memmove(p + replace_len, p + word_len, strlen(p + word_len) + 1);
+    memcpy(p, replace, replace_len);
 
-  memmove(p + replace_len, p + word_len, strlen(p + word_len) + 1);
-  memcpy(p, replace, replace_len);
-
-  return string;
+    p++;
+  }
 }
 
 // Removes unused curly braces expressions; returns 0 on success
@@ -76,15 +80,16 @@ static int curlycrunch(char *string, int position) {
   return 0;
 }
 
-// Replaces first occurence of "search" in "string" (an array of char), e.g.:
+// Replaces all occurences of "search" in "string" (an array of char), e.g.:
 // strreplace(temp, "%title%", title)
 // "string" must be of length MAX_FILENAME_LEN
+// "search" and "replace" must not be equal
 inline char *strreplace(char *string, char *search, char *replace) {
   char *p;
-  char temp[MAX_FILENAME_LEN] = "";
-  int position; // Position of first character of "search" in "format_string"
-  p = strstr(string, search);
-  if (p != NULL) {
+
+  while ((p = strstr(string, search))) {
+    char temp[MAX_FILENAME_LEN] = "";
+    int position; // Position of first character of "search" in "format_string"
     if (replace == NULL) replace = "";
     position = p - string;
 
@@ -104,6 +109,7 @@ inline char *strreplace(char *string, char *search, char *replace) {
     //printf("Current string (step 3): \"%s\"\n\n", temp);  //DEBUG
     strcpy(string, temp);
   }
+
   return p;
 }
 

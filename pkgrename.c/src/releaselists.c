@@ -1,3 +1,4 @@
+#include "../include/common.h"
 #include "../include/releaselists.h"
 #include "../include/strings.h"
 
@@ -71,8 +72,13 @@ char *get_release_group(char *string) {
 char *get_uploader(char *string) {
   struct rls_list *p = uploaders;
 
+  // Check user-specified tags first, so they can override default tags
+  for (int i = 0; i < tagc; i++) {
+    if (strwrd(string, tags[i])) return tags[i];
+  }
+
   while (p->name != NULL) {
-    if (strwrd(string, p->name) != NULL) return p->name;
+    if (strwrd(string, p->name)) return p->name;
     if (p->alt_name != NULL && strwrd(string, p->alt_name)) return p->name;
     p++;
   }
@@ -104,6 +110,11 @@ char *get_tag(char *string) {
     if (strings_match(p->name, string))
       return p->name;
     p++;
+  }
+
+  // Check user-specified tags first, so they can override default uploaders
+  for (int i = 0; i < tagc; i++) {
+    if (strings_match(tags[i], string)) return tags[i];
   }
 
   p = uploaders;

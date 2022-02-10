@@ -19,6 +19,8 @@
 
 extern char format_string[MAX_FORMAT_STRING_LEN];
 extern char placeholder_char;
+extern char *tags[100];
+extern int tagc;
 struct custom_category {
   char *game;
   char *patch;
