@@ -40,8 +40,8 @@ The program's help screen ("pkgrename --help"):
       %version%        "1.00"
     
       (*) Backports not targeting 5.05 are detected by searching file names for
-      strings "BP", "Backport", and "BACKPORT". The same principle applies
-      to release groups and releases.
+      the words "BP" and "Backport" (case-insensitive). The same principle
+      applies to release groups and releases.
     
       (**) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
@@ -50,7 +50,6 @@ The program's help screen ("pkgrename --help"):
       %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
       %type% values. They will be displayed if the PKG is of that specific category.
     
-      Only the first occurence of each pattern variable will be parsed.
       After parsing, empty pairs of brackets, empty pairs of parentheses, and any
       remaining curly braces ("[]", "()", "{", "}") will be removed.
     
@@ -93,6 +92,7 @@ The program's help screen ("pkgrename --help"):
     
     Options:
     --------
+      -c, --compact         Hide files that are already renamed.
       -f, --force           Force-prompt even when file names match.
       -h, --help            Print this help screen.
       -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
@@ -100,23 +100,56 @@ The program's help screen ("pkgrename --help"):
       -m, --mixed-case      Automatically apply mixed-case letter style.
           --no-placeholder  Hide characters instead of using placeholders.
       -n, --no-to-all       Do not prompt; do not actually rename any files.
-                            This can be used for a test run.
+                            This can be used to do a test run.
       -o, --online          Automatically search online for %title%.
       -p, --pattern x       Set the file name pattern to string x.
           --placeholder x   Set the placeholder character to x.
           --print-database  Print all current database entries.
       -r, --recursive       Traverse subdirectories recursively.
           --set-type x      Set %type% mapping to 5 comma-separated strings x.
+          --tags x          Load additional %release% tags from comma-separated
+                            string x (no spaces before or after commas).
+          --tagfile x       Load additional %release% tags from text file x, one
+                            tag per line.
       -u, --underscores     Use underscores instead of spaces in file names.
       -v, --verbose         Display additional infos.
           --version         Print release date.
       -y, --yes-to-all      Do not prompt; rename all files automatically.
 
-How to compile for Linux (requires libcurl development files):
+#### Tagging
+
+You can organize your PKGs by tagging them:
+
+       "unnamed.pkg"
+    => "Assassin's Creed Valhalla [v1.00] [CUSA18534].pkg"
+    OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: t
+
+    Enter new tag: dup  [DUPLEX]
+
+Pressing Enter at this point will use word completion to apply the suggested value:
+
+    => "Assassin's Creed Valhalla [v1.00] [CUSA18534] [DUPLEX].pkg"
+    OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: 
+
+The next time pkgrename is run on this file, it will recognize and preserve the tag.
+You can add your own tag values, by using options --tags and/or --tagfile:
+
+    pkgrename --tags "user500,Umbrella Corp.,john_wayne"
+    pkgrename --tagfile tags.txt
+
+If you use a text file, each line must contain a single tag:
+
+    user500
+    Umbrella Corp.
+    john_wayne
+
+#### How to compile...
+
+...for Linux/Unix (requires libcurl development files):
 
     gcc pkgrename.c src/*.c -o pkgrename -lcurl -s -O3
 
-How to compile for Windows:
+...for Windows:
 
     x86_64-w64-mingw32-gcc-win32 pkgrename.c src/*.c -o pkgrename.exe --static -s -O3
 
@@ -128,14 +161,19 @@ Please report bugs, make feature requests, or add missing data at https://github
 
 Put pkgrename.exe in a folder (you can also put other command line programs there).
 Inside that folder, create a new file named "pkgrename.bat" and open it with Notepad.
-Write the following lines, while replacing "ARGUMENTS" with your preferred arguments (e.g.: "-m --pattern "%title% [%title_id%]"), including the quotes:
+Write the following lines, while replacing ARGUMENTS with your preferred arguments (e.g.: -m --pattern "%title% [%title_id%]"):
 
     @echo off
-    pkgrename.exe "ARGUMENTS" %*
+    pkgrename.exe ARGUMENTS %*
+    
+E.g.:
+
+    @echo off
+    pkgrename.exe --pattern "%title% [%title_id%]" --tagfile "C:\Users\Luigi\pkgrename_tags.txt" %*
 
 Now click Start, type "env" and select "Edit environment variables for your account". Select "Path" and click edit. Select "New" and enter the folder where you put pkgrename.bat into. Close and reopen any opened command line windows for the changes to apply.
 
-# pkgrename (original Bash script)
+# pkgrename (original Bash script, superseded by pkgrename.c)
 Renames PS4 PKG files based on local param.sfo information and predefined patterns.
 Requires Bash script or program "sfo" (https://github.com/hippie68/sfo) in your $PATH environment variable.
 
