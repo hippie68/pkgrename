@@ -160,17 +160,19 @@ Please report bugs, make feature requests, or add missing data at https://github
 #### For Windows: How to run pkgrename.exe from anywhere with modified arguments:
 
 Put pkgrename.exe in a folder (you can also put other command line programs there).
-Inside that folder, create a new file named "pkgrename.bat" and open it with Notepad.
-Write the following lines, while replacing ARGUMENTS with your preferred arguments (e.g.: -m --pattern "%title% [%title_id%]"):
+Inside that folder, create a new batch file named "pkgrename.bat" and open it with Notepad.
+Write the following lines, while replacing ARGUMENTS with your preferred arguments:
 
     @echo off
     pkgrename.exe ARGUMENTS %*
     
-E.g.:
+For example:
 
     @echo off
-    pkgrename.exe --pattern "%title% [%title_id%]" --tagfile "C:\Users\Luigi\pkgrename_tags.txt" %*
+    pkgrename.exe --pattern "%%title%% [%%title_id%%]" --tagfile "C:\Users\Luigi\pkgrename_tags.txt" %*
 
+Note: As seen above, if the batch file contains pattern variables, their percent signs need to be escaped by doubling them. For example, %title% must be changed to %%title%%.
+    
 Now click Start, type "env" and select "Edit environment variables for your account". Select "Path" and click edit. Select "New" and enter the folder where you put pkgrename.bat into. Close and reopen any opened command line windows for the changes to apply.
 
 # pkgrename (original Bash script, superseded by pkgrename.c)
