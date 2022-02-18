@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Build date: %s %s\n", __DATE__, __TIME__);
+  printf("Version 1.05b, build date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -63,7 +63,7 @@ void print_usage(void) {
   "\n"
   "  (**) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
   "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
-  "    --set-type \"Game,Patch,DLC,-,-\" (no spaces before or after commas)\n"
+  "    --set-type \"Game,Patch %%app_ver%%,DLC,-,-\" (no spaces before or after commas)\n"
   "  Each string must have a value. To hide a category, use the value \"-\".\n"
   "  %%app%%, %%dlc%%, %%game%%, %%other%%, and %%patch%% are mapped to their corresponding\n"
   "  %%type%% values. They will be displayed if the PKG is of that specific category.\n"
@@ -96,7 +96,7 @@ void print_usage(void) {
   "Interactive prompt:\n"
   "-------------------\n"
   "  - [Y]es     Rename the file as seen.\n"
-  "  - [N]o      Skip the file and drops all changes.\n"
+  "  - [N]o      Skip the file and drop all changes.\n"
   "  - [A]ll     Same as yes, but also for all future files.\n"
   "  - [E]dit    Prompt to manually edit the title.\n"
   "  - [T]ag     Prompt to enter a release group or a release.\n"

@@ -33,7 +33,7 @@
 char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%dlc%] [{v%app_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]";
 struct custom_category custom_category =
-  {"Game", "Update %app_ver%", "DLC", "App", NULL};
+  {"Game", "Update", "DLC", "App", "Other"};
 char *tags[100];
 int tagc;
 int first_run = 1;
@@ -534,11 +534,11 @@ void pkgrename(char *filename) {
         break;
       case 'b': // [B]ackport: toggle backport tag
         if (backport) {
-          printf("\nBackport tag disabled.\n\n");
           backport = NULL;
+          printf("\nBackport tag disabled.\n\n");
         } else {
-          printf("\nBackport tag enabled.\n\n");
           backport = "Backport";
+          printf("\nBackport tag enabled.\n\n");
         }
         break;
     }

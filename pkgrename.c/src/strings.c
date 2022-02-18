@@ -279,6 +279,7 @@ void mixed_case(char *title) {
     "PES",
     "PGA",
     "PS2",
+    "PS4",
     "PSN",
     "PaRappa",
     "PixARK",

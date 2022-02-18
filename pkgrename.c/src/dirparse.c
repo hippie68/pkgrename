@@ -70,9 +70,9 @@ void parse_directory(char *directory_name) {
         // One-time message when entering a new directory that has .pkg files
         if (option_recursive == 1 && file_count == 0) {
           if (first_run) {
-            printf("\n");
+            first_run = 0;
           } else {
-            first_run = 1;
+            printf("\n");
           }
           printf(GRAY "Entering directory \"%s\"\n" RESET, directory_name);
         }
