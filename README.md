@@ -45,7 +45,7 @@ The program's help screen ("pkgrename --help"):
     
       (**) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
-        --set-type "Game,Patch,DLC,-,-" (no spaces before or after commas)
+        --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
       Each string must have a value. To hide a category, use the value "-".
       %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
       %type% values. They will be displayed if the PKG is of that specific category.
