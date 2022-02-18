@@ -265,19 +265,19 @@ void pkgrename(char *filename) {
 
     // Replace pattern variables
     strcpy(new_basename, format_string);
-    // %type% first, as it may contain other pattern variables
+    // Types first, as they may contain other pattern variables
     strreplace(new_basename, "%type%", type);
-
     strreplace(new_basename, "%app%", app);
+    strreplace(new_basename, "%dlc%", dlc);
+    strreplace(new_basename, "%game%", game);
+    strreplace(new_basename, "%other%", other);
+    strreplace(new_basename, "%patch%", patch);
+
     strreplace(new_basename, "%app_ver%", app_ver);
     strreplace(new_basename, "%backport%", backport);
     strreplace(new_basename, "%category%", category);
     strreplace(new_basename, "%content_id%", content_id);
-    strreplace(new_basename, "%dlc%", dlc);
     strreplace(new_basename, "%firmware%", firmware);
-    strreplace(new_basename, "%game%", game);
-    strreplace(new_basename, "%other%", other);
-    strreplace(new_basename, "%patch%", patch);
     if (tag_release_group[0] != '\0') {
       strreplace(new_basename, "%release_group%", tag_release_group);
     } else {

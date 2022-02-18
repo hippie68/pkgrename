@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.05b, build date: %s %s\n", __DATE__, __TIME__);
+  printf("Version 1.05c, build date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
