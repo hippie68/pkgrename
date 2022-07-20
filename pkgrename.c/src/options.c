@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.05c, build date: %s %s\n", __DATE__, __TIME__);
+  printf("Version 1.05d, build date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -48,6 +48,7 @@ void print_usage(void) {
   "  %%game%%           \"Game\"\n"
   "  %%other%%          \"Other\"\n"
   "  %%patch%%          \"Update\"\n"
+  "  %%region%%         \"EP\"\n"
   "  %%release_group%%  \"PRELUDE\" (*)\n"
   "  %%release%%        \"John Doe\" (*)\n"
   "  %%sdk%%            \"4.50\"\n"
@@ -206,6 +207,7 @@ static inline void optf_tagfile(char *file_name) {
   char buf[MAX_TAG_LEN + 1];
   while (fgets(buf, sizeof buf, tagfile)) {
     buf[strcspn(buf, "\r\n")] = '\0';
+    if (buf[0] == '\0') continue;
     tags[tagc] = realloc(tags[tagc], strlen(buf) + 1);
     memcpy(tags[tagc], buf, strlen(buf) + 1);
     tagc++;
