@@ -95,6 +95,7 @@ void pkgrename(char *filename) {
   char *game = NULL;
   char *other = NULL;
   char *patch = NULL;
+  char region[3] = "";
   char *release_group = NULL;
   char *release = NULL;
   char sdk[6] = "";
@@ -181,6 +182,9 @@ void pkgrename(char *filename) {
       }
     } else if (strcmp(params[i].name, "CONTENT_ID") == 0) {
       content_id = params[i].string;
+      region[0] = content_id[0];
+      region[1] = content_id[1];
+      region[2] = '\0';
     } else if (strcmp(params[i].name, "PUBTOOLINFO") == 0) {
       char *p = strstr(params[i].string, "sdk_ver=");
       if (p != NULL) {
@@ -277,6 +281,7 @@ void pkgrename(char *filename) {
     strreplace(new_basename, "%backport%", backport);
     strreplace(new_basename, "%category%", category);
     strreplace(new_basename, "%content_id%", content_id);
+    strreplace(new_basename, "%region%", region);
     strreplace(new_basename, "%firmware%", firmware);
     if (tag_release_group[0] != '\0') {
       strreplace(new_basename, "%release_group%", tag_release_group);
