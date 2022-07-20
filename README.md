@@ -30,6 +30,7 @@ The program's help screen ("pkgrename --help"):
       %game%           "Game"
       %other%          "Other"
       %patch%          "Update"
+      %region%         "EP"
       %release_group%  "PRELUDE" (*)
       %release%        "John Doe" (*)
       %sdk%            "4.50"
