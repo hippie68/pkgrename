@@ -49,9 +49,8 @@ void parse_directory(char *directory_name) {
     if (directory_entry->d_type == DT_DIR) {
       // Save name in the directory list
       if (option_recursive == 1
-        && strcmp(directory_entry->d_name, "..") != 0 // Exclude system dirs
-        && strcmp(directory_entry->d_name, ".") != 0)
-      {
+        && directory_entry->d_name[0] != '.'
+        && directory_entry->d_name[0] != '$') { // Exclude system directories
         directory_names[directory_count] = malloc(strlen(directory_name) + 1 +
           strlen(directory_entry->d_name) + 1);
         sprintf(directory_names[directory_count], "%s%c%s", directory_name,

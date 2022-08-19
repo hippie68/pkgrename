@@ -95,7 +95,7 @@ void pkgrename(char *filename) {
   char *game = NULL;
   char *other = NULL;
   char *patch = NULL;
-  char region[3] = "";
+  char *region = NULL;
   char *release_group = NULL;
   char *release = NULL;
   char sdk[6] = "";
@@ -182,9 +182,13 @@ void pkgrename(char *filename) {
       }
     } else if (strcmp(params[i].name, "CONTENT_ID") == 0) {
       content_id = params[i].string;
-      region[0] = content_id[0];
-      region[1] = content_id[1];
-      region[2] = '\0';
+      switch (content_id[0]) {
+        case 'E': region = "EU"; break;
+        case 'H': region = "AS"; break;
+        case 'I': region = "IN"; break;
+        case 'J': region = "JP"; break;
+        case 'U': region = "US"; break;
+      }
     } else if (strcmp(params[i].name, "PUBTOOLINFO") == 0) {
       char *p = strstr(params[i].string, "sdk_ver=");
       if (p != NULL) {
