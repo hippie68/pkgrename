@@ -420,18 +420,18 @@ void pkgrename(char *filename) {
      **************************************************************************/
 
     // Clear stdin immediately
-    #ifndef _WIN32
+#ifndef _WIN32
     __fpurge(stdin);
-    #endif
+#endif
 
     // Read user input
     printf("OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");
     do {
-      #ifdef _WIN32
+#ifdef _WIN32
       c = getch();
-      #else
+#else
       c = getchar();
-      #endif
+#endif
     } while (strchr("ynaetmorcsqb", c) == NULL);
     printf("%c\n", c);
 
@@ -585,9 +585,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  #ifdef _WIN32
+#ifdef _WIN32
   reset_terminal();
-  #endif
+#endif
 
   exit(0);
 }
