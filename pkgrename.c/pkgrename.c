@@ -13,6 +13,7 @@
 #include "include/terminal.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,10 +22,8 @@
 
 #ifdef _WIN32
 #include <conio.h> // For getch()
-#include "include/dirent.h"
 #define DIR_SEPARATOR '\\'
 #else
-#include <dirent.h>
 #include <signal.h>
 #include <stdio_ext.h> // For __fpurge(); requires the GNU C Library
 #define DIR_SEPARATOR '/'
@@ -390,7 +389,13 @@ void pkgrename(char *filename) {
 
     // Exit if new basename too long
     if (strlen(new_basename) > MAX_FILENAME_LEN - 1) {
+#ifdef _WIN64
+      fprintf(stderr, "New filename too long (%llu/%d) characters).\n",
+#elif defined(_WIN32)
+      fprintf(stderr, "New filename too long (%u/%d) characters).\n",
+#else
       fprintf(stderr, "New filename too long (%lu/%d) characters).\n",
+#endif
         strlen(new_basename) + 4, MAX_FILENAME_LEN - 1);
       exit(1);
     }

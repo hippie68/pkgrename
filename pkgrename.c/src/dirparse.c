@@ -4,11 +4,10 @@
 #include "../include/options.h"
 
 #ifdef _WIN32
-#include "../include/dirent.h"
-#else
-#include <dirent.h>
+#include <sys/stat.h>
 #endif
 
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +45,19 @@ void parse_directory(char *directory_name) {
   // Read all directory entries to put them in lists
   while ((directory_entry = readdir(dir)) != NULL) {
     // Entry is directory
+#ifdef _WIN32 // MinGW does not know .d_type.
+    struct stat statbuf;
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s%c%s", directory_name, DIR_SEPARATOR,
+      directory_entry->d_name);
+    if (stat(path, &statbuf) == -1) {
+      fprintf(stderr, "Could not read file information: \"%s\".\n", path);
+      exit(1);
+    }
+    if (S_ISDIR(statbuf.st_mode)) {
+#else
     if (directory_entry->d_type == DT_DIR) {
+#endif
       // Save name in the directory list
       if (option_recursive == 1
         && directory_entry->d_name[0] != '.'

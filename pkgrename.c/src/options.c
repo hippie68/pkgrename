@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.05e, build date: %s %s\n", __DATE__, __TIME__);
+  printf("Version 1.05f TEST BUILD, build date: %s %s\n", __DATE__, __TIME__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -156,7 +156,13 @@ static inline void optf_online() { option_online = 1; }
 static inline void optf_pattern(char *pattern) {
   size_t len = strlen(pattern);
   if (len >= MAX_FORMAT_STRING_LEN) {
+#ifdef _WIN64
+    fprintf(stderr, "Pattern too long (%llu/%d characters).\n", len,
+#elif defined(_WIN32)
+    fprintf(stderr, "Pattern too long (%u/%d characters).\n", len,
+#else
     fprintf(stderr, "Pattern too long (%lu/%d characters).\n", len,
+#endif
       MAX_FORMAT_STRING_LEN - 1);
     exit(1);
   }
