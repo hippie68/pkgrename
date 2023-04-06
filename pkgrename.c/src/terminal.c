@@ -119,7 +119,7 @@ static void clear_line() {
 // User input function with editing capabilities; for use with raw_terminal().
 // Function f() is optional; its return value is used for auto-completion.
 // Currently not working with Unicode characters.
-void scan_string(char *string, int max_size, char *default_string, char *(*f)())
+void scan_string(char *string, size_t max_size, char *default_string, char *(*f)())
 {
   #ifdef _WIN32
   #define KEY_BACKSPACE 8
@@ -141,7 +141,7 @@ void scan_string(char *string, int max_size, char *default_string, char *(*f)())
 
   strncpy(buffer, default_string, max_size);
   printf("%s", buffer);
-  int i = strlen(buffer);
+  size_t i = strlen(buffer);
 
   while ((key = getchar()) != KEY_ENTER) { // Enter key
     //printf("Number: %d\n", key); // DEBUG
@@ -177,7 +177,7 @@ void scan_string(char *string, int max_size, char *default_string, char *(*f)())
       case KEY_DELETE: // Delete
         memmove(&buffer[i], &buffer[i + 1], max_size);
         printf("%s \b", &buffer[i]);
-        for (int count = strlen(buffer); count > i; count --) {
+        for (size_t count = strlen(buffer); count > i; count --) {
           printf("\b");
         }
         break;
@@ -187,7 +187,7 @@ void scan_string(char *string, int max_size, char *default_string, char *(*f)())
           memmove(&buffer[i - 1], &buffer[i], max_size);
           i--;
           printf("%s \b", &buffer[i]);
-          for (int count = strlen(buffer); count > i; count --) {
+          for (size_t count = strlen(buffer); count > i; count --) {
             printf("\b");
           }
         }
@@ -203,7 +203,7 @@ void scan_string(char *string, int max_size, char *default_string, char *(*f)())
           buffer[i] = key;
           i++;
           printf("%s", &buffer[i]);
-          for (int count = strlen(buffer); count > i; count --) {
+          for (size_t count = strlen(buffer); count > i; count --) {
             printf("\b");
           }
         }
@@ -215,7 +215,7 @@ void scan_string(char *string, int max_size, char *default_string, char *(*f)())
       autocomplete = f(buffer);
       if (autocomplete != NULL) {
         printf("  [%s]", autocomplete);
-        for (int i = 0; i < strlen(autocomplete) + 4; i++) {
+        for (size_t i = 0; i < strlen(autocomplete) + 4; i++) {
           printf("\b");
         }
       }

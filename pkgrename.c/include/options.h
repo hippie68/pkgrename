@@ -15,6 +15,7 @@ extern int option_verbose;
 extern int option_yes_to_all;
 
 void print_usage(void);
+void print_prompt_help(void);
 void parse_options(int argc, char *argv[]);
 
 #endif

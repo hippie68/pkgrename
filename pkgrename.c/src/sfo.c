@@ -39,19 +39,21 @@ static inline uint32_t get_uint32(size_t offset) {
   return val;
 }
 
+struct pkg_table_entry {
+  uint32_t id;
+  uint32_t filename_offset;
+  uint32_t flags1;
+  uint32_t flags2;
+  uint32_t offset;
+  uint32_t size;
+  uint64_t padding;
+};
+
 // Finds the param.sfo file inside a PS4 PKG file and loads it into memory
-static void load_param_sfo() {
+static void load_param_sfo(void) {
   const int pkg_table_offset = bswap_32(get_uint32(0x018));
-  const int pkg_file_count = bswap_32(get_uint32(0x00C));
-  struct pkg_table_entry {
-    uint32_t id;
-    uint32_t filename_offset;
-    uint32_t flags1;
-    uint32_t flags2;
-    uint32_t offset;
-    uint32_t size;
-    uint64_t padding;
-  } pkg_table_entry;
+  const int pkg_file_count = bswap_32(get_uint32(0x010));
+  struct pkg_table_entry pkg_table_entry;
 
   // Search PKG file until param.sfo is found
   fseek(file, pkg_table_offset, SEEK_SET);
@@ -59,12 +61,67 @@ static void load_param_sfo() {
     fread(&pkg_table_entry, sizeof(struct pkg_table_entry), 1, file);
 
     // Load param.sfo into memory
-    if (pkg_table_entry.id == 1048576) { // param.sfo file ID
+    if (pkg_table_entry.id == bswap_32(0x00001000)) { // param.sfo file ID
       fseek(file, bswap_32(pkg_table_entry.offset), SEEK_SET);
-      fread(param_sfo, bswap_32(pkg_table_entry.size), 1, file);
-      return;
+      uint32_t filesize = bswap_32(pkg_table_entry.size);
+      if (filesize > sizeof(param_sfo))
+        filesize = sizeof(param_sfo);
+      fread(param_sfo, filesize, 1, file);
     }
   }
+}
+
+// Loads the true patch version from a PKG and stores it in a buffer;
+// the buffer must be of size 6
+int get_patch_version(char *version_buf, char *filename) {
+  if ((file = fopen(filename, "rb")) == NULL)
+    return -1;
+
+  int result = -1;
+  const int pkg_table_offset = bswap_32(get_uint32(0x018));
+  const int pkg_file_count = bswap_32(get_uint32(0x010));
+  struct pkg_table_entry pkg_table_entry;
+
+  // Search PKG file until changeinfo.xml is found
+  fseek(file, pkg_table_offset, SEEK_SET);
+  for (int i = 0; i < pkg_file_count; i++) {
+    fread(&pkg_table_entry, sizeof(struct pkg_table_entry), 1, file);
+
+    // Check if PKG includes a patch
+    if (pkg_table_entry.id == bswap_32(0x00001260)) { // changeinfo.xml file ID
+      fseek(file, bswap_32(pkg_table_entry.offset), SEEK_SET);
+      uint32_t filesize = bswap_32(pkg_table_entry.size);
+      if (filesize > 65535)
+        filesize = 65535;
+      char buf[filesize + 1];
+      fread(&buf, filesize, 1, file);
+      buf[sizeof(buf) - 1] = '\0';
+
+      // Grab the highest patch version
+      char *bufp = buf;
+      char *next_patch;
+      char current_patch[6];
+      while ((next_patch = strstr(bufp, "app_ver=\"")) != NULL) {
+        next_patch += 9;
+        if (version_buf[0] == '\0') {
+          strncpy(version_buf, next_patch, 5);
+          version_buf[5] = '\0';
+        } else {
+          strncpy(current_patch, next_patch, 5);
+          current_patch[5] = '\0';
+          if (strcmp(version_buf, current_patch) < 0)
+            memcpy(version_buf, current_patch, 6);
+        }
+
+        bufp = next_patch;
+      }
+      if (strcmp(version_buf, "01.00") != 0) // File is not a scene comment
+        result = 0;
+    }
+  }
+
+  fclose(file);
+  return result;
 }
 
 // Opens a PS4 PKG or param.sfo file and reads its param.sfo content into
@@ -72,6 +129,7 @@ static void load_param_sfo() {
 //   0: Error while opening file.
 //   1: File is not a PKG.
 //   2: Param.sfo magic number not found.
+// This function also sets merged_ver (pkgrename.c) if a patch is found
 struct sfo_parameter *sfo_read(int *count, char *filename) {
   // Open binary file
   if ((file = fopen(filename, "rb")) == NULL) {
@@ -121,7 +179,7 @@ struct sfo_parameter *sfo_read(int *count, char *filename) {
     * sizeof(struct sfo_parameter));
 
   // Fill the parameter array
-  for (int i = 0; i < sfo_header->indextable_entries; i++) {
+  for (size_t i = 0; i < sfo_header->indextable_entries; i++) {
     // Get current parameter's name
     params[i].name = &param_sfo[sfo_header->keytable_offset + indextable_entry[i].keytable_offset];
 

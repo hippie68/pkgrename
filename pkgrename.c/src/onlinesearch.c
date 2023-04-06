@@ -70,7 +70,7 @@ void search_online(char *content_id, char *title, int silent) {
       "See \"https://curl.se/libcurl/c/libcurl-errors.html\".\n", result);
   }
 
-  //printf("Output: %s\n", curl_output); // DEBUG
+  //printf("cURL output: %s\n", curl_output); // DEBUG
 
   // Search cURL's output for the title
   char *start = strstr(curl_output, "@type");
@@ -133,7 +133,10 @@ void search_online(char *content_id, char *title, int silent) {
       "See https://curl.se/libcurl/c/libcurl-errors.html\n", result);
     goto exit;
   }
-  //printf("%s\n", curl_output); // DEBUG
+
+  //printf("cURL output: %s\n", curl_output); // DEBUG
+
+  // Search cURL's output for the title
   char *start = strstr(curl_output, "@type");
   if (start != NULL && strlen(start) > 25) {
     start += 25;
@@ -148,7 +151,7 @@ void search_online(char *content_id, char *title, int silent) {
     } else {
       fprintf(stderr, BRIGHT_RED "Error while searching online. Please contact"
         " the developer at \"https://github.com/hippie68/pkgrename/issues\""
-        " and show him this link: %s.\n" RESET, url);
+        " and show him this link: \"%s\".\n" RESET, url);
     }
   } else {
     fail:

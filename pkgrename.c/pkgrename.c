@@ -30,7 +30,7 @@
 #endif
 
 char format_string[MAX_FORMAT_STRING_LEN] =
-  "%title% [%dlc%] [{v%app_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]";
+  "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]";
 struct custom_category custom_category =
   {"Game", "Update", "DLC", "App", "Other"};
 char *tags[100];
@@ -82,6 +82,7 @@ void pkgrename(char *filename) {
   int spec_chars_current, spec_chars_total;
   int paramc;
   struct sfo_parameter *params;
+  int prompted_once = 0;
 
   // Internal pattern variables
   char *app = NULL;
@@ -92,6 +93,8 @@ void pkgrename(char *filename) {
   char *dlc = NULL;
   char firmware[9] = "";
   char *game = NULL;
+  char merged_ver_buf[5] = "";
+  char *merged_ver = NULL;
   char *other = NULL;
   char *patch = NULL;
   char *region = NULL;
@@ -102,6 +105,7 @@ void pkgrename(char *filename) {
   char title[MAX_TITLE_LEN] = "";
   char *title_backup = NULL;
   char *title_id = NULL;
+  char *true_ver = NULL;
   char *type = NULL;
   char *version = NULL;
 
@@ -121,7 +125,7 @@ void pkgrename(char *filename) {
 
   // Create a lowercase copy of "basename"
   strcpy(lowercase_basename, basename);
-  for (int i = 0; i < strlen(lowercase_basename); i++) {
+  for (size_t i = 0; i < strlen(lowercase_basename); i++) {
     lowercase_basename[i] = tolower(lowercase_basename[i]);
   }
 
@@ -146,8 +150,7 @@ void pkgrename(char *filename) {
         fprintf(stderr, "File is not a PKG: \"%s\".\n", filename);
         exit(1);
       case 2:
-        fprintf(stderr, "Param.sfo not found in file \"%s\".\n",
-          filename);
+        fprintf(stderr, "Param.sfo not found in file \"%s\".\n", filename);
         exit(1);
     }
     return;
@@ -236,6 +239,19 @@ void pkgrename(char *filename) {
     backport = "Backport";
   }
 
+  // Detect if app is merged with a patch
+  if (category[0] == 'g' && category[1] == 'd') {
+    if (get_patch_version(merged_ver_buf, filename)) {
+      true_ver = app_ver;
+    } else {
+      if (option_leading_zeros == 1)
+        merged_ver = merged_ver_buf;
+      else if (merged_ver_buf[0] == '0')
+        merged_ver = merged_ver_buf + 1;
+      true_ver = merged_ver;
+    }
+  }
+
   // Detect releases
   release_group = get_release_group(lowercase_basename);
   release = get_uploader(lowercase_basename);
@@ -284,6 +300,7 @@ void pkgrename(char *filename) {
     strreplace(new_basename, "%backport%", backport);
     strreplace(new_basename, "%category%", category);
     strreplace(new_basename, "%content_id%", content_id);
+    strreplace(new_basename, "%merged_ver%", merged_ver);
     strreplace(new_basename, "%region%", region);
     strreplace(new_basename, "%firmware%", firmware);
     if (tag_release_group[0] != '\0') {
@@ -301,6 +318,7 @@ void pkgrename(char *filename) {
       strreplace(new_basename, "%size%", size);
     strreplace(new_basename, "%title%", title);
     strreplace(new_basename, "%title_id%", title_id);
+    strreplace(new_basename, "%true_ver%", true_ver);
     strreplace(new_basename, "%version%", version);
 
     // Remove empty brackets and parentheses, and curly braces
@@ -404,9 +422,12 @@ void pkgrename(char *filename) {
     if (option_no_to_all == 1) goto exit;
 
     // Quit if already renamed
-    if (option_force == 0 && strcmp(basename, new_basename) == 0) {
+    if (!prompted_once && option_force == 0
+      && strcmp(basename, new_basename) == 0) {
       printf("Nothing to do.\n");
       goto exit;
+    } else {
+      prompted_once = 1;
     }
 
     // Rename now if option_yes_to_all enabled
@@ -425,14 +446,14 @@ void pkgrename(char *filename) {
 #endif
 
     // Read user input
-    printf("OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: ");
+    printf("[Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: ");
     do {
 #ifdef _WIN32
       c = getch();
 #else
       c = getchar();
 #endif
-    } while (strchr("ynaetmorcsqb", c) == NULL);
+    } while (strchr("ynaetmorcshqbp", c) == NULL);
     printf("%c\n", c);
 
     // Evaluate user input
@@ -455,7 +476,7 @@ void pkgrename(char *filename) {
         fgets(title, MAX_TITLE_LEN, stdin);
         title[strlen(title) - 1] = '\0'; // Remove Enter character
         // Remove entered control characters
-        for (int i = 0; i < strlen(title); i++) {
+        for (size_t i = 0; i < strlen(title); i++) {
           if (iscntrl(title[i])) {
             memmove(&title[i], &title[i + 1], strlen(title) - i);
             i--;
@@ -526,7 +547,7 @@ void pkgrename(char *filename) {
       case 'c': // [C]hars: reveal all non-printable characters
         printf("\nOriginal: \"%s\"\nRevealed: \"", title);
         int count = 0;
-        for (int i = 0; i < strlen(title); i++) {
+        for (size_t i = 0; i < strlen(title); i++) {
           if (isprint(title[i])) {
             printf("%c", title[i]);
           } else {
@@ -543,8 +564,10 @@ void pkgrename(char *filename) {
         print_sfo(filename);
         printf("\n");
         break;
-      case 'q': // [Q]uit: exit the program
-        exit(0);
+      case 'h': // [H]elp: show help
+        printf("\n");
+        print_prompt_help();
+        printf("\n");
         break;
       case 'b': // [B]ackport: toggle backport tag
         if (backport) {
@@ -554,6 +577,27 @@ void pkgrename(char *filename) {
           backport = "Backport";
           printf("\nBackport tag enabled.\n\n");
         }
+        break;
+      case 'p': // [P]atch: toggle merged patch detection for app PKGs
+        if (!(category[0] == 'g' && category[1] == 'd'))
+          printf("\nThis PKG is not an app.\n\n");
+        else if (merged_ver_buf[0] == '\0') {
+          printf("\nNo merged patch was detected.\n\n");
+        } else if (true_ver != app_ver) {
+          merged_ver = NULL;
+          true_ver = app_ver;
+          printf("\nMerged patch detection ignored for the current file.\n\n");
+        } else {
+          if (option_leading_zeros == 1)
+            merged_ver = merged_ver_buf;
+          else if (merged_ver_buf[0] == '0')
+            merged_ver = merged_ver_buf + 1;
+          true_ver = merged_ver;
+          printf("\nMerged patch detection enabled for the current file.\n\n");
+        }
+        break;
+      case 'q': // [Q]uit: exit the program
+        exit(0);
         break;
     }
   }

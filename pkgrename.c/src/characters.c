@@ -9,7 +9,7 @@ char placeholder_char = '_';
 
 // Returns 1 if char c is illegal on an exFAT file system
 int is_in_set(char c, char *set) {
-  for (int i = 0; i < strlen(set); i++) {
+  for (size_t i = 0; i < strlen(set); i++) {
     if (c == set[i]) {
       return 1;
     }
@@ -21,7 +21,7 @@ int is_in_set(char c, char *set) {
 int count_spec_chars(char *string) {
   int count = 0;
 
-  for (int i = 0; i < strlen(string); i++) {
+  for (size_t i = 0; i < strlen(string); i++) {
     if (!isprint(string[i])) count++;
   }
 
@@ -33,7 +33,7 @@ void replace_illegal_characters(char *string) {
   char buffer[strlen(string)];
   char *p = buffer;
 
-  for (int i = 0; i < strlen(string); i++) {
+  for (size_t i = 0; i < strlen(string); i++) {
     // Printable character
     if (isprint(string[i])) {
       if (is_in_set(string[i], illegal_characters)) {

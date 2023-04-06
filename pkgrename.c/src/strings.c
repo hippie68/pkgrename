@@ -65,7 +65,7 @@ static int curlycrunch(char *string, int position) {
   }
 
   // Search right
-  for (int i = position; i < strlen(string); i++) {
+  for (size_t i = position; i < strlen(string); i++) {
     if (string[i] == '}') {
       strcat(temp, &string[i + 1]);
       //printf("%s right: %s\n", __func__, temp); // DEBUG
@@ -370,7 +370,7 @@ void mixed_case(char *title) {
 
 int lower_strcmp(char *string1, char *string2) {
   if (strlen(string1) == strlen(string2)) {
-    for (int i = 0; i < strlen(string1); i++) {
+    for (size_t i = 0; i < strlen(string1); i++) {
       if (tolower(string1[i]) != tolower(string2[i])) {
         return 1;
       }

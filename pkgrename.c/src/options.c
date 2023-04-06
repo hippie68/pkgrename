@@ -20,11 +20,30 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.05f, build date: %s %s\n", __DATE__, __TIME__);
+  printf("Version 1.06 Beta, build date: %s\n", __DATE__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
     "\"%s\".\n", SUPPORT_LINK);
+}
+
+void print_prompt_help(void) {
+  printf(
+  "  - [Y]es     Rename the file as seen.\n"
+  "  - [N]o      Skip the file and drop all changes.\n"
+  "  - [A]ll     Same as yes, but also for all future files.\n"
+  "  - [E]dit    Prompt to manually edit the title.\n"
+  "  - [T]ag     Prompt to enter a release group or a release.\n"
+  "  - [M]ix     Convert the letter case to mixed-case style.\n"
+  "  - [O]nline  Search the PS Store online for title information.\n"
+  "  - [R]eset   Undo all changes.\n"
+  "  - [C]hars   Reveal special characters in the title.\n"
+  "  - [S]FO     Show file's param.sfo information.\n"
+  "  - [H]elp    Print help.\n"
+  "  - [Q]uit    Exit the program.\n"
+  "  - [B]       (Hidden) Toggle the \"Backport\" tag.\n"
+  "  - [P]       (Hidden) Toggle merged patch detection for app PKGs.\n"
+  );
 }
 
 void print_usage(void) {
@@ -32,20 +51,21 @@ void print_usage(void) {
   "Usage: pkgrename [options] [file|directory ...]\n"
   "\n"
   "Renames PS4 PKGs to match a file name pattern. The default pattern is:\n"
-  "\"%%title%% [%%dlc%%] [{v%%app_ver%%}] [%%title_id%%] [%%release_group%%] [%%release%%] [%%backport%%]\"\n"
+  "\"%%title%% [%%dlc%%] [{v%%app_ver%%}{ + v%%merged_ver%%}] [%%title_id%%] [%%release_group%%] [%%release%%] [%%backport%%]\"\n"
   "\n"
   "Pattern variables:\n"
   "------------------\n"
   "  Name             Example\n"
   "  ----------------------------------------------------------------------\n"
   "  %%app%%            \"App\"\n"
-  "  %%app_ver%%        \"1.50\"\n"
+  "  %%app_ver%%        \"1.00\"\n"
   "  %%backport%%       \"Backport\" (*)\n"
   "  %%category%%       \"gp\"\n"
   "  %%content_id%%     \"EP4497-CUSA05571_00-00000000000GOTY1\"\n"
   "  %%dlc%%            \"DLC\"\n"
   "  %%firmware%%       \"4.70\"\n"
   "  %%game%%           \"Game\"\n"
+  "  %%merged_ver%%     \"\" (**)\n"
   "  %%other%%          \"Other\"\n"
   "  %%patch%%          \"Update\"\n"
   "  %%region%%         \"EU\"\n"
@@ -55,14 +75,20 @@ void print_usage(void) {
   "  %%size%%           \"0.11 GiB\"\n"
   "  %%title%%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
   "  %%title_id%%       \"CUSA05571\"\n"
-  "  %%type%%           \"Update\" (**)\n"
-  "  %%version%%        \"1.00\"\n"
+  "  %%true_ver%%       \"4.03\" (**)\n"
+  "  %%type%%           \"Game\" (***)\n"
+  "  %%version%%        \"4.03\"\n"
   "\n"
-  "  (*) Backports not targeting 5.05 are detected by searching file names for\n"
-  "  the words \"BP\" and \"Backport\" (case-insensitive). The same principle\n"
-  "  applies to release groups and releases.\n"
+  "  (*) Backports not targeting 5.05 are detected by searching file names for the\n"
+  "  words \"BP\" and \"Backport\" (case-insensitive). The same principle applies to\n"
+  "  release groups and releases.\n"
   "\n"
-  "  (**) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
+  "  (**) Apps merged with patches are detected by searching PKG files for\n"
+  "  changelog information. If a merged patch is found, both %%merged_ver%% and\n"
+  "  %%true_ver%% are the patch version. If no patch is found, %%merged_ver%% is empty\n"
+  "  and %%true_ver%% is %%app_ver%%.\n"
+  "\n"
+  "  (***) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
   "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
   "    --set-type \"Game,Patch %%app_ver%%,DLC,-,-\" (no spaces before or after commas)\n"
   "  Each string must have a value. To hide a category, use the value \"-\".\n"
@@ -95,22 +121,10 @@ void print_usage(void) {
   "    of non-ASCII characters.\n"
   "\n"
   "Interactive prompt:\n"
-  "-------------------\n"
-  "  - [Y]es     Rename the file as seen.\n"
-  "  - [N]o      Skip the file and drop all changes.\n"
-  "  - [A]ll     Same as yes, but also for all future files.\n"
-  "  - [E]dit    Prompt to manually edit the title.\n"
-  "  - [T]ag     Prompt to enter a release group or a release.\n"
-  "  - [M]ix     Convert the letter case to mixed-case style.\n"
-  "  - [O]nline  Search the PS Store online for title information.\n"
-  "  - [R]eset   Undo all changes.\n"
-  "  - [C]hars   Reveal special characters in the title.\n"
-  "  - [S]FO     Show file's param.sfo information.\n"
-  "  - [Q]uit    Exit the program.\n"
-  "  - [B]       (Hidden) Toggle the \"Backport\" tag.\n"
-  "\n");
+  "-------------------\n");
+  print_prompt_help();
   printf(
-  "Options:\n"
+  "\nOptions:\n"
   "--------\n"
   "  -c, --compact         Hide files that are already renamed.\n"
   "  -f, --force           Force-prompt even when file names match.\n"
@@ -124,7 +138,7 @@ void print_usage(void) {
   "  -o, --online          Automatically search online for %%title%%.\n"
   "  -p, --pattern x       Set the file name pattern to string x.\n"
   "      --placeholder x   Set the placeholder character to x.\n"
-  "      --print-database  Print all current database entries.\n"
+  "      --print-database  Print all current release database entries.\n"
   "  -r, --recursive       Traverse subdirectories recursively.\n"
   "      --set-type x      Set %%type%% mapping to 5 comma-separated strings x.\n"
   "      --tags x          Load additional %%release%% tags from comma-separated\n"
@@ -133,7 +147,7 @@ void print_usage(void) {
   "                        tag per line.\n"
   "  -u, --underscores     Use underscores instead of spaces in file names.\n"
   "  -v, --verbose         Display additional infos.\n"
-  "      --version         Print release date.\n"
+  "      --version         Print the current pkgrename version.\n"
   "  -y, --yes-to-all      Do not prompt; rename all files automatically.\n"
   );
 }
@@ -182,7 +196,7 @@ static inline void optf_recursive() { option_recursive = 1; }
 static inline void optf_set_type(char *argument) {
   // Exit if wrong number of arguments
   int comma_count = 0;
-  for (int i = 0; i < strlen(argument); i++) {
+  for (size_t i = 0; i < strlen(argument); i++) {
     if (argument[i] == ',') comma_count++;
   }
   if (comma_count != 4) {
