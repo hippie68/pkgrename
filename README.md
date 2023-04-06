@@ -7,27 +7,28 @@ The program in action looks like this:
     $ pkgrename
        "totally_not_helpful_filename.pkg"
     => "Baldur's Gate and Baldur's Gate II_ Enhanced Editions [v1.02] [CUSA15671].pkg"
-    OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: y
+    [Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: y
 
 The program's help screen ("pkgrename --help"):
 
     Usage: pkgrename [options] [file|directory ...]
     
     Renames PS4 PKGs to match a file name pattern. The default pattern is:
-    "%title% [%dlc%] [{v%app_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
+    "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
     
     Pattern variables:
     ------------------
       Name             Example
       ----------------------------------------------------------------------
       %app%            "App"
-      %app_ver%        "1.50"
+      %app_ver%        "1.00"
       %backport%       "Backport" (*)
       %category%       "gp"
       %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
       %dlc%            "DLC"
       %firmware%       "4.70"
       %game%           "Game"
+      %merged_ver%     "" (**)
       %other%          "Other"
       %patch%          "Update"
       %region%         "EU"
@@ -37,14 +38,20 @@ The program's help screen ("pkgrename --help"):
       %size%           "0.11 GiB"
       %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
       %title_id%       "CUSA05571"
-      %type%           "Update" (**)
-      %version%        "1.00"
+      %true_ver%       "4.03" (**)
+      %type%           "Game" (***)
+      %version%        "4.03"
     
-      (*) Backports not targeting 5.05 are detected by searching file names for
-      the words "BP" and "Backport" (case-insensitive). The same principle
-      applies to release groups and releases.
+      (*) Backports not targeting 5.05 are detected by searching file names for the
+      words "BP" and "Backport" (case-insensitive). The same principle applies to
+      release groups and releases.
     
-      (**) %type% is %category% mapped to "Game,Update,DLC,App,Other".
+      (**) Apps merged with patches are detected by searching PKG files for
+      changelog information. If a merged patch is found, both %merged_ver% and
+      %true_ver% are the patch version. If no patch is found, %merged_ver% is empty
+      and %true_ver% is %app_ver%.
+    
+      (***) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
         --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
       Each string must have a value. To hide a category, use the value "-".
@@ -79,7 +86,7 @@ The program's help screen ("pkgrename --help"):
     Interactive prompt:
     -------------------
       - [Y]es     Rename the file as seen.
-      - [N]o      Skip the file and drops all changes.
+      - [N]o      Skip the file and drop all changes.
       - [A]ll     Same as yes, but also for all future files.
       - [E]dit    Prompt to manually edit the title.
       - [T]ag     Prompt to enter a release group or a release.
@@ -88,8 +95,10 @@ The program's help screen ("pkgrename --help"):
       - [R]eset   Undo all changes.
       - [C]hars   Reveal special characters in the title.
       - [S]FO     Show file's param.sfo information.
+      - [H]elp    Print help.
       - [Q]uit    Exit the program.
       - [B]       (Hidden) Toggle the "Backport" tag.
+      - [P]       (Hidden) Toggle merged patch detection for app PKGs.
     
     Options:
     --------
@@ -105,7 +114,7 @@ The program's help screen ("pkgrename --help"):
       -o, --online          Automatically search online for %title%.
       -p, --pattern x       Set the file name pattern to string x.
           --placeholder x   Set the placeholder character to x.
-          --print-database  Print all current database entries.
+          --print-database  Print all current release database entries.
       -r, --recursive       Traverse subdirectories recursively.
           --set-type x      Set %type% mapping to 5 comma-separated strings x.
           --tags x          Load additional %release% tags from comma-separated
@@ -114,8 +123,9 @@ The program's help screen ("pkgrename --help"):
                             tag per line.
       -u, --underscores     Use underscores instead of spaces in file names.
       -v, --verbose         Display additional infos.
-          --version         Print release date.
+          --version         Print the current pkgrename version.
       -y, --yes-to-all      Do not prompt; rename all files automatically.
+
 
 #### Tagging
 
@@ -123,14 +133,14 @@ You can organize your PKGs by tagging them:
 
        "unnamed.pkg"
     => "Assassin's Creed Valhalla [v1.00] [CUSA18534].pkg"
-    OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: t
+    [Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: t
 
     Enter new tag: dup  [DUPLEX]
 
 Pressing Enter at this point will use word completion to apply the suggested value:
 
     => "Assassin's Creed Valhalla [v1.00] [CUSA18534] [DUPLEX].pkg"
-    OK? [Y]es [N]o [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [Q]uit: 
+    [Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: 
 
 The next time pkgrename is run on this file, it will recognize and preserve the tag.
 You can add your own tag values, by using options --tags and/or --tagfile:
