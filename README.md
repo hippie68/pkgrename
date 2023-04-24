@@ -21,12 +21,12 @@ The program's help screen ("pkgrename --help"):
       Name             Example
       ----------------------------------------------------------------------
       %app%            "App"
-      %app_ver%        "1.00"
+      %app_ver%        "4.03"
       %backport%       "Backport" (*)
       %category%       "gp"
       %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
       %dlc%            "DLC"
-      %firmware%       "4.70"
+      %firmware%       "10.01"
       %game%           "Game"
       %merged_ver%     "" (**)
       %other%          "Other"
@@ -35,18 +35,18 @@ The program's help screen ("pkgrename --help"):
       %release_group%  "PRELUDE" (*)
       %release%        "John Doe" (*)
       %sdk%            "4.50"
-      %size%           "0.11 GiB"
+      %size%           "19.34 GiB"
       %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
       %title_id%       "CUSA05571"
       %true_ver%       "4.03" (**)
-      %type%           "Game" (***)
-      %version%        "4.03"
+      %type%           "Update" (***)
+      %version%        "1.00"
     
       (*) Backports not targeting 5.05 are detected by searching file names for the
       words "BP" and "Backport" (case-insensitive). The same principle applies to
       release groups and releases.
     
-      (**) Apps merged with patches are detected by searching PKG files for
+      (**) Apps merged with patches are detected by searching their PKG files for
       changelog information. If a merged patch is found, both %merged_ver% and
       %true_ver% are the patch version. If no patch is found, %merged_ver% is empty
       and %true_ver% is %app_ver%.
@@ -106,7 +106,7 @@ The program's help screen ("pkgrename --help"):
       -f, --force           Force-prompt even when file names match.
       -h, --help            Print this help screen.
       -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
-                            %firmware%, %sdk%, and %version%.
+                            %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%.
       -m, --mixed-case      Automatically apply mixed-case letter style.
           --no-placeholder  Hide characters instead of using placeholders.
       -n, --no-to-all       Do not prompt; do not actually rename any files.
@@ -125,7 +125,6 @@ The program's help screen ("pkgrename --help"):
       -v, --verbose         Display additional infos.
           --version         Print the current pkgrename version.
       -y, --yes-to-all      Do not prompt; rename all files automatically.
-
 
 #### Tagging
 
