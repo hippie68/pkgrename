@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.06 Beta, build date: %s\n", __DATE__);
+  printf("Version 1.06, build date: %s\n", __DATE__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -58,12 +58,12 @@ void print_usage(void) {
   "  Name             Example\n"
   "  ----------------------------------------------------------------------\n"
   "  %%app%%            \"App\"\n"
-  "  %%app_ver%%        \"1.00\"\n"
+  "  %%app_ver%%        \"4.03\"\n"
   "  %%backport%%       \"Backport\" (*)\n"
   "  %%category%%       \"gp\"\n"
   "  %%content_id%%     \"EP4497-CUSA05571_00-00000000000GOTY1\"\n"
   "  %%dlc%%            \"DLC\"\n"
-  "  %%firmware%%       \"4.70\"\n"
+  "  %%firmware%%       \"10.01\"\n"
   "  %%game%%           \"Game\"\n"
   "  %%merged_ver%%     \"\" (**)\n"
   "  %%other%%          \"Other\"\n"
@@ -72,18 +72,18 @@ void print_usage(void) {
   "  %%release_group%%  \"PRELUDE\" (*)\n"
   "  %%release%%        \"John Doe\" (*)\n"
   "  %%sdk%%            \"4.50\"\n"
-  "  %%size%%           \"0.11 GiB\"\n"
+  "  %%size%%           \"19.34 GiB\"\n"
   "  %%title%%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
   "  %%title_id%%       \"CUSA05571\"\n"
   "  %%true_ver%%       \"4.03\" (**)\n"
-  "  %%type%%           \"Game\" (***)\n"
-  "  %%version%%        \"4.03\"\n"
+  "  %%type%%           \"Update\" (***)\n"
+  "  %%version%%        \"1.00\"\n"
   "\n"
   "  (*) Backports not targeting 5.05 are detected by searching file names for the\n"
   "  words \"BP\" and \"Backport\" (case-insensitive). The same principle applies to\n"
   "  release groups and releases.\n"
   "\n"
-  "  (**) Apps merged with patches are detected by searching PKG files for\n"
+  "  (**) Apps merged with patches are detected by searching their PKG files for\n"
   "  changelog information. If a merged patch is found, both %%merged_ver%% and\n"
   "  %%true_ver%% are the patch version. If no patch is found, %%merged_ver%% is empty\n"
   "  and %%true_ver%% is %%app_ver%%.\n"
@@ -130,7 +130,7 @@ void print_usage(void) {
   "  -f, --force           Force-prompt even when file names match.\n"
   "  -h, --help            Print this help screen.\n"
   "  -0, --leading-zeros   Show leading zeros in pattern variables %%app_ver%%,\n"
-  "                        %%firmware%%, %%sdk%%, and %%version%%.\n"
+  "                        %%firmware%%, %%merged_ver%%, %%sdk%%, %%true_ver%%, %%version%%.\n"
   "  -m, --mixed-case      Automatically apply mixed-case letter style.\n"
   "      --no-placeholder  Hide characters instead of using placeholders.\n"
   "  -n, --no-to-all       Do not prompt; do not actually rename any files.\n"
@@ -225,7 +225,7 @@ static inline void optf_tagfile(char *file_name) {
   }
 
   char buf[MAX_TAG_LEN + 1];
-  while (fgets(buf, sizeof buf, tagfile)) {
+  while (fgets(buf, sizeof buf, tagfile) && tagc < MAX_TAGS) {
     buf[strcspn(buf, "\r\n")] = '\0';
     if (buf[0] == '\0') continue;
     tags[tagc] = realloc(tags[tagc], strlen(buf) + 1);
@@ -237,7 +237,7 @@ static inline void optf_tagfile(char *file_name) {
 
 static inline void optf_tags(char *taglist) {
   char *p = strtok(taglist, ",");
-  while (p) {
+  while (p && tagc < MAX_TAGS) {
     tags[tagc] = realloc(tags[tagc], strlen(p) + 1);
     memcpy(tags[tagc], p, strlen(p) + 1);
     tagc++;

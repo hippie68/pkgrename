@@ -15,11 +15,13 @@
 // Case-insensitively tests if a string contains a word
 inline char *strwrd(char *string, char *word) {
   char *p = strcasestr(string, word);
+  if (p == NULL)
+    return NULL;
+
   size_t word_len = strlen(word);
   size_t string_len = strlen(string);
 
   do {
-    if (p == NULL) return NULL;
     if ((p != string && isalnum(p[-1]))
       || (p != string + (string_len - word_len) && isalnum(p[word_len]))) {
       continue;

@@ -1,5 +1,12 @@
 #define _FILE_OFFSET_BITS 64
 
+#ifdef _WIN32
+#include <shlwapi.h>
+#define strcasestr StrStrIA
+#else
+#define _GNU_SOURCE // For strcasestr(), which is not standard
+#endif
+
 #include "include/characters.h"
 #include "include/colors.h"
 #include "include/common.h"
@@ -29,11 +36,13 @@
 #define DIR_SEPARATOR '/'
 #endif
 
+#define CHANGELOG_MAX_SIZE 65536
+
 char format_string[MAX_FORMAT_STRING_LEN] =
   "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]";
 struct custom_category custom_category =
   {"Game", "Update", "DLC", "App", "Other"};
-char *tags[100];
+char *tags[MAX_TAGS];
 int tagc;
 int first_run = 1;
 
@@ -83,6 +92,7 @@ void pkgrename(char *filename) {
   int paramc;
   struct sfo_parameter *params;
   int prompted_once = 0;
+  int merged_patch_detection = 1;
 
   // Internal pattern variables
   char *app = NULL;
@@ -120,7 +130,10 @@ void pkgrename(char *filename) {
   // Define the file's path
   int path_len = strlen(filename) - strlen(basename);
   path = malloc(path_len + 1);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
   strncpy(path, filename, path_len);
+#pragma GCC diagnostic pop
   path[path_len] = '\0';
 
   // Create a lowercase copy of "basename"
@@ -152,6 +165,10 @@ void pkgrename(char *filename) {
       case 2:
         fprintf(stderr, "Param.sfo not found in file \"%s\".\n", filename);
         exit(1);
+      case 3:
+        fprintf(stderr, "PKG file \"%s\" does not contain a param.sfo file.\n",
+          filename);
+        exit(1);
     }
     return;
   }
@@ -164,6 +181,7 @@ void pkgrename(char *filename) {
       } else {
         app_ver = params[i].string;
       }
+      true_ver = app_ver;
     } else if (strcmp(params[i].name, "CATEGORY") == 0) {
       category = params[i].string;
       if (strcmp(params[i].string, "gd") == 0) {
@@ -232,24 +250,38 @@ void pkgrename(char *filename) {
     }
   }
 
-  // Detect backport
-  if ((type == custom_category.patch && strcmp(sdk, "5.05") == 0)
-      || strwrd(lowercase_basename, "backport")
-      || strwrd(lowercase_basename, "bp")) {
-    backport = "Backport";
-  }
+  // Load changelog
+  char changelog[CHANGELOG_MAX_SIZE];
+  load_changelog(changelog, CHANGELOG_MAX_SIZE, filename);
 
   // Detect if app is merged with a patch
-  if (category[0] == 'g' && category[1] == 'd') {
-    if (get_patch_version(merged_ver_buf, filename)) {
-      true_ver = app_ver;
-    } else {
-      if (option_leading_zeros == 1)
-        merged_ver = merged_ver_buf;
-      else if (merged_ver_buf[0] == '0')
-        merged_ver = merged_ver_buf + 1;
-      true_ver = merged_ver;
+  if (changelog[0] != '\0' && category[0] == 'g' && category[1] == 'd'
+    && (strstr(format_string, "%merged_ver%")
+    || strstr(format_string, "%true_ver%")))
+  {
+    switch (get_patch_version(merged_ver_buf, changelog)) {
+      case -1:
+        fprintf(stderr, "Error while reading from file \"%s\".\n", filename);
+        exit(1);
+      case 1:
+        if (option_leading_zeros == 1)
+          merged_ver = merged_ver_buf;
+        else if (merged_ver_buf[0] == '0')
+          merged_ver = merged_ver_buf + 1;
+        true_ver = merged_ver;
+        break;
     }
+  }
+
+  // Detect backport
+  if ((category[0] == 'g' && category[1] == 'p'
+    && ((option_leading_zeros == 0 && strcmp(sdk, "5.05") == 0 )
+    || (option_leading_zeros == 1 && strcmp(sdk, "05.05") == 0)))
+    || strstr(lowercase_basename, "backport")
+    || strwrd(lowercase_basename, "bp")
+    || strcasestr(changelog, "backport"))
+  {
+    backport = "Backport";
   }
 
   // Detect releases
@@ -300,9 +332,9 @@ void pkgrename(char *filename) {
     strreplace(new_basename, "%backport%", backport);
     strreplace(new_basename, "%category%", category);
     strreplace(new_basename, "%content_id%", content_id);
+    strreplace(new_basename, "%firmware%", firmware);
     strreplace(new_basename, "%merged_ver%", merged_ver);
     strreplace(new_basename, "%region%", region);
-    strreplace(new_basename, "%firmware%", firmware);
     if (tag_release_group[0] != '\0') {
       strreplace(new_basename, "%release_group%", tag_release_group);
     } else {
@@ -579,20 +611,20 @@ void pkgrename(char *filename) {
         }
         break;
       case 'p': // [P]atch: toggle merged patch detection for app PKGs
-        if (!(category[0] == 'g' && category[1] == 'd'))
-          printf("\nThis PKG is not an app.\n\n");
-        else if (merged_ver_buf[0] == '\0') {
-          printf("\nNo merged patch was detected.\n\n");
-        } else if (true_ver != app_ver) {
+        if (!(category[0] == 'g' && category[1] == 'd')) {
+          printf("\nMerged patch detection not possible for non-app PKGs.\n\n");
+        } else if (merged_patch_detection) {
           merged_ver = NULL;
           true_ver = app_ver;
-          printf("\nMerged patch detection ignored for the current file.\n\n");
+          merged_patch_detection = 0;
+          printf("\nMerged patch detection disabled for the current file.\n\n");
         } else {
           if (option_leading_zeros == 1)
             merged_ver = merged_ver_buf;
           else if (merged_ver_buf[0] == '0')
             merged_ver = merged_ver_buf + 1;
           true_ver = merged_ver;
+          merged_patch_detection = 1;
           printf("\nMerged patch detection enabled for the current file.\n\n");
         }
         break;

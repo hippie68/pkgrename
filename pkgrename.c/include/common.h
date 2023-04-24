@@ -12,6 +12,7 @@
 #define MAX_FILENAME_LEN 256 // exFAT file name limit (+1)
 #define MAX_FORMAT_STRING_LEN 512
 #define MAX_TAG_LEN 20
+#define MAX_TAGS 100
 #define MAX_TITLE_LEN 128 // https://www.psdevwiki.com/ps4/Param.sfo#TITLE
 
 #define HOMEPAGE_LINK "https://github.com/hippie68/pkgrename"
@@ -19,7 +20,7 @@
 
 extern char format_string[MAX_FORMAT_STRING_LEN];
 extern char placeholder_char;
-extern char *tags[100];
+extern char *tags[MAX_TAGS];
 extern int tagc;
 struct custom_category {
   char *game;

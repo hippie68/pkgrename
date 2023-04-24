@@ -50,78 +50,34 @@ struct pkg_table_entry {
 };
 
 // Finds the param.sfo file inside a PS4 PKG file and loads it into memory
-static void load_param_sfo(void) {
+// Returns -1 on read error, 1 if the PKG does not contain a param.sfo file
+static int load_param_sfo(void) {
   const int pkg_table_offset = bswap_32(get_uint32(0x018));
   const int pkg_file_count = bswap_32(get_uint32(0x010));
   struct pkg_table_entry pkg_table_entry;
 
   // Search PKG file until param.sfo is found
-  fseek(file, pkg_table_offset, SEEK_SET);
+  if (fseek(file, pkg_table_offset, SEEK_SET))
+    return -1;
   for (int i = 0; i < pkg_file_count; i++) {
-    fread(&pkg_table_entry, sizeof(struct pkg_table_entry), 1, file);
+    if (fread(&pkg_table_entry, sizeof(struct pkg_table_entry), 1, file) != 1)
+      return -1;
 
     // Load param.sfo into memory
     if (pkg_table_entry.id == bswap_32(0x00001000)) { // param.sfo file ID
-      fseek(file, bswap_32(pkg_table_entry.offset), SEEK_SET);
+      if (fseek(file, bswap_32(pkg_table_entry.offset), SEEK_SET))
+        return -1;
       uint32_t filesize = bswap_32(pkg_table_entry.size);
       if (filesize > sizeof(param_sfo))
         filesize = sizeof(param_sfo);
-      fread(param_sfo, filesize, 1, file);
-    }
-  }
-}
+      if (fread(param_sfo, filesize, 1, file) != 1)
+        return -1;
 
-// Loads the true patch version from a PKG and stores it in a buffer;
-// the buffer must be of size 6
-int get_patch_version(char *version_buf, char *filename) {
-  if ((file = fopen(filename, "rb")) == NULL)
-    return -1;
-
-  int result = -1;
-  const int pkg_table_offset = bswap_32(get_uint32(0x018));
-  const int pkg_file_count = bswap_32(get_uint32(0x010));
-  struct pkg_table_entry pkg_table_entry;
-
-  // Search PKG file until changeinfo.xml is found
-  fseek(file, pkg_table_offset, SEEK_SET);
-  for (int i = 0; i < pkg_file_count; i++) {
-    fread(&pkg_table_entry, sizeof(struct pkg_table_entry), 1, file);
-
-    // Check if PKG includes a patch
-    if (pkg_table_entry.id == bswap_32(0x00001260)) { // changeinfo.xml file ID
-      fseek(file, bswap_32(pkg_table_entry.offset), SEEK_SET);
-      uint32_t filesize = bswap_32(pkg_table_entry.size);
-      if (filesize > 65535)
-        filesize = 65535;
-      char buf[filesize + 1];
-      fread(&buf, filesize, 1, file);
-      buf[sizeof(buf) - 1] = '\0';
-
-      // Grab the highest patch version
-      char *bufp = buf;
-      char *next_patch;
-      char current_patch[6];
-      while ((next_patch = strstr(bufp, "app_ver=\"")) != NULL) {
-        next_patch += 9;
-        if (version_buf[0] == '\0') {
-          strncpy(version_buf, next_patch, 5);
-          version_buf[5] = '\0';
-        } else {
-          strncpy(current_patch, next_patch, 5);
-          current_patch[5] = '\0';
-          if (strcmp(version_buf, current_patch) < 0)
-            memcpy(version_buf, current_patch, 6);
-        }
-
-        bufp = next_patch;
-      }
-      if (strcmp(version_buf, "01.00") != 0) // File is not a scene comment
-        result = 0;
+      return 0;
     }
   }
 
-  fclose(file);
-  return result;
+  return 1;
 }
 
 // Opens a PS4 PKG or param.sfo file and reads its param.sfo content into
@@ -129,8 +85,9 @@ int get_patch_version(char *version_buf, char *filename) {
 //   0: Error while opening file.
 //   1: File is not a PKG.
 //   2: Param.sfo magic number not found.
+//   3: PKG does not contain param.sfo.
 // This function also sets merged_ver (pkgrename.c) if a patch is found
-struct sfo_parameter *sfo_read(int *count, char *filename) {
+struct sfo_parameter *sfo_read(int *count, const char *filename) {
   // Open binary file
   if ((file = fopen(filename, "rb")) == NULL) {
     *count = 0;
@@ -141,7 +98,14 @@ struct sfo_parameter *sfo_read(int *count, char *filename) {
   uint32_t magic;
   magic = get_uint32(0);
   if (magic == MAGIC_NUMBER_PKG) {
-    load_param_sfo();
+    switch(load_param_sfo()) {
+      case -1:
+        *count = 0;
+        return NULL;
+      case 1:
+        *count = 3;
+        return NULL;
+    }
   } else {
     *count = 1;
     return NULL;
@@ -208,8 +172,82 @@ struct sfo_parameter *sfo_read(int *count, char *filename) {
   return params;
 }
 
+// Loads a PKG file's changelog (if it exists) into a buffer
+// Returns -1 on read error, otherwise 0
+int load_changelog(char *buffer, int bufsize, const char *filename) {
+  if ((file = fopen(filename, "rb")) == NULL)
+    return -1;
+
+  const int pkg_table_offset = bswap_32(get_uint32(0x018));
+  const int pkg_entry_count = bswap_32(get_uint32(0x010));
+  struct pkg_table_entry pkg_table_entry;
+
+  // Search PKG file until changeinfo.xml is found
+  if (fseek(file, pkg_table_offset, SEEK_SET)) {
+    fclose(file);
+    return -1;
+  }
+  for (int i = 0; i < pkg_entry_count; i++) {
+    if (fread(&pkg_table_entry, sizeof(struct pkg_table_entry), 1, file) != 1) {
+      fclose(file);
+      return -1;
+    }
+
+    if (pkg_table_entry.id == bswap_32(0x00001260)) { // changeinfo.xml file ID
+      if (fseek(file, bswap_32(pkg_table_entry.offset), SEEK_SET)) {
+        fclose(file);
+        return -1;
+      }
+      uint32_t filesize = bswap_32(pkg_table_entry.size);
+      if (filesize > bufsize - 1)
+        filesize = bufsize - 1;
+      if (fread(buffer, filesize, 1, file) != 1) {
+        fclose(file);
+        return -1;
+      }
+
+      fclose(file);
+      buffer[filesize] = '\0';
+      return 0;
+    }
+  }
+
+  fclose(file);
+  buffer[0] = '\0';
+  return 0;
+}
+
+// Loads the true patch version from a string and stores it in a buffer;
+// the buffer must be of size 6
+// Returns -1 on read error, 1 if the patch version has been found, otherwise 0
+int get_patch_version(char *version_buf, const char *changelog) {
+  // Grab the highest patch version
+  const char *bufp = changelog;
+  char *next_patch;
+  char current_patch[6];
+  while ((next_patch = strstr(bufp, "app_ver=\"")) != NULL) {
+    next_patch += 9;
+    if (version_buf[0] == '\0') {
+      strncpy(version_buf, next_patch, 5);
+      version_buf[5] = '\0';
+    } else {
+      strncpy(current_patch, next_patch, 5);
+      current_patch[5] = '\0';
+      if (strcmp(version_buf, current_patch) < 0)
+        memcpy(version_buf, current_patch, 6);
+    }
+
+    bufp = next_patch;
+  }
+
+  if (strcmp(version_buf, "01.00") != 0) // File is not a scene comment
+    return 1;
+  else
+    return 0;
+}
+
 // Prints a PKG file's param.sfo data.
-void print_sfo(char *filename) {
+void print_sfo(const char *filename) {
   int count;
   struct sfo_parameter *params = sfo_read(&count, filename);
 
