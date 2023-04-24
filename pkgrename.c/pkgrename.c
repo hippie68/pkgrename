@@ -1,9 +1,6 @@
 #define _FILE_OFFSET_BITS 64
 
-#ifdef _WIN32
-#include <shlwapi.h>
-#define strcasestr StrStrIA
-#else
+#ifndef _WIN32
 #define _GNU_SOURCE // For strcasestr(), which is not standard
 #endif
 
@@ -29,6 +26,8 @@
 
 #ifdef _WIN32
 #include <conio.h> // For getch()
+#include <shlwapi.h>
+#define strcasestr StrStrIA
 #define DIR_SEPARATOR '\\'
 #else
 #include <signal.h>
@@ -623,7 +622,8 @@ void pkgrename(char *filename) {
             merged_ver = merged_ver_buf;
           else if (merged_ver_buf[0] == '0')
             merged_ver = merged_ver_buf + 1;
-          true_ver = merged_ver;
+          if (merged_ver)
+            true_ver = merged_ver;
           merged_patch_detection = 1;
           printf("\nMerged patch detection enabled for the current file.\n\n");
         }
