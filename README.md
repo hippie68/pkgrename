@@ -46,10 +46,11 @@ The program's help screen ("pkgrename --help"):
       words "BP" and "Backport" (case-insensitive). The same principle applies to
       release groups and releases.
     
-      (**) Apps merged with patches are detected by searching their PKG files for
-      changelog information. If a merged patch is found, both %merged_ver% and
-      %true_ver% are the patch version. If no patch is found, %merged_ver% is empty
-      and %true_ver% is %app_ver%.
+      (**) Patches and apps merged with patches are detected by searching PKG files
+      for changelog information. If a patch is found, both %merged_ver% and
+      %true_ver% are the patch version. If no patch is found or if patch detection
+      is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
+      %merged_ver% is always empty for non-app PKGs.
     
       (***) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
@@ -98,7 +99,7 @@ The program's help screen ("pkgrename --help"):
       - [H]elp    Print help.
       - [Q]uit    Exit the program.
       - [B]       (Hidden) Toggle the "Backport" tag.
-      - [P]       (Hidden) Toggle merged patch detection for app PKGs.
+      - [P]       (Hidden) Toggle changelog patch detection for the current PKG.
     
     Options:
     --------
