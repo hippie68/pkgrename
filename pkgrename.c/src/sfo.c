@@ -219,7 +219,7 @@ int load_changelog(char *buffer, int bufsize, const char *filename) {
 
 // Loads the true patch version from a string and stores it in a buffer;
 // the buffer must be of size 6
-// Returns -1 on read error, 1 if the patch version has been found, otherwise 0
+// Returns 1 if the patch version has been found, otherwise 0
 int get_patch_version(char *version_buf, const char *changelog) {
   // Grab the highest patch version
   const char *bufp = changelog;
@@ -240,10 +240,7 @@ int get_patch_version(char *version_buf, const char *changelog) {
     bufp = next_patch;
   }
 
-  if (strcmp(version_buf, "01.00") != 0) // File is not a scene comment
-    return 1;
-  else
-    return 0;
+  return version_buf[0] != '\0';
 }
 
 // Prints a PKG file's param.sfo data.

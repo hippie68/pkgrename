@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.06a, build date: %s\n", __DATE__);
+  printf("Version 1.06b, build date: %s\n", __DATE__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -42,7 +42,7 @@ void print_prompt_help(void) {
   "  - [H]elp    Print help.\n"
   "  - [Q]uit    Exit the program.\n"
   "  - [B]       (Hidden) Toggle the \"Backport\" tag.\n"
-  "  - [P]       (Hidden) Toggle merged patch detection for app PKGs.\n"
+  "  - [P]       (Hidden) Toggle changelog patch detection for the current PKG.\n"
   );
 }
 
@@ -83,10 +83,11 @@ void print_usage(void) {
   "  words \"BP\" and \"Backport\" (case-insensitive). The same principle applies to\n"
   "  release groups and releases.\n"
   "\n"
-  "  (**) Apps merged with patches are detected by searching their PKG files for\n"
-  "  changelog information. If a merged patch is found, both %%merged_ver%% and\n"
-  "  %%true_ver%% are the patch version. If no patch is found, %%merged_ver%% is empty\n"
-  "  and %%true_ver%% is %%app_ver%%.\n"
+  "  (**) Patches and apps merged with patches are detected by searching PKG files\n"
+  "  for changelog information. If a patch is found, both %%merged_ver%% and\n"
+  "  %%true_ver%% are the patch version. If no patch is found or if patch detection\n"
+  "  is disabled (command [P]), %%merged_ver%% is empty and %%true_ver%% is %%app_ver%%.\n"
+  "  %%merged_ver%% is always empty for non-app PKGs.\n"
   "\n"
   "  (***) %%type%% is %%category%% mapped to \"Game,Update,DLC,App,Other\".\n"
   "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"

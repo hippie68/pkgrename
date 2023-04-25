@@ -91,7 +91,7 @@ void pkgrename(char *filename) {
   int paramc;
   struct sfo_parameter *params;
   int prompted_once = 0;
-  int merged_patch_detection = 1;
+  int changelog_patch_detection = 1;
 
   // Internal pattern variables
   char *app = NULL;
@@ -102,7 +102,7 @@ void pkgrename(char *filename) {
   char *dlc = NULL;
   char firmware[9] = "";
   char *game = NULL;
-  char merged_ver_buf[5] = "";
+  char true_ver_buf[5] = "";
   char *merged_ver = NULL;
   char *other = NULL;
   char *patch = NULL;
@@ -180,7 +180,6 @@ void pkgrename(char *filename) {
       } else {
         app_ver = params[i].string;
       }
-      true_ver = app_ver;
     } else if (strcmp(params[i].name, "CATEGORY") == 0) {
       category = params[i].string;
       if (strcmp(params[i].string, "gd") == 0) {
@@ -249,27 +248,28 @@ void pkgrename(char *filename) {
     }
   }
 
-  // Load changelog
+  // Load changelog, if required
   char changelog[CHANGELOG_MAX_SIZE];
-  load_changelog(changelog, CHANGELOG_MAX_SIZE, filename);
-
-  // Detect if app is merged with a patch
-  if (changelog[0] != '\0' && category[0] == 'g' && category[1] == 'd'
-    && (strstr(format_string, "%merged_ver%")
-    || strstr(format_string, "%true_ver%")))
+  changelog[0] = '\0';
+  if (strstr(format_string, "%merged_ver%")
+    || strstr(format_string, "%true_ver%"))
   {
-    switch (get_patch_version(merged_ver_buf, changelog)) {
-      case -1:
-        fprintf(stderr, "Error while reading from file \"%s\".\n", filename);
-        exit(1);
-      case 1:
-        if (option_leading_zeros == 1)
-          merged_ver = merged_ver_buf;
-        else if (merged_ver_buf[0] == '0')
-          merged_ver = merged_ver_buf + 1;
-        true_ver = merged_ver;
-        break;
+    if (load_changelog(changelog, CHANGELOG_MAX_SIZE, filename)) {
+      fprintf(stderr, "Error while reading from file \"%s\".\n", filename);
+      exit(1);
     }
+  }
+
+  // Detect changelog patch level
+  if (changelog[0] && get_patch_version(true_ver_buf, changelog)) {
+    if (option_leading_zeros == 0 && true_ver_buf[0] == '0')
+      true_ver = true_ver_buf + 1;
+    else
+      true_ver = true_ver_buf;
+    if (category[1] == 'd' && strcmp(true_ver_buf, "01.00") != 0)
+      merged_ver = true_ver;
+  } else {
+    true_ver = app_ver;
   }
 
   // Detect backport
@@ -278,7 +278,7 @@ void pkgrename(char *filename) {
     || (option_leading_zeros == 1 && strcmp(sdk, "05.05") == 0)))
     || strstr(lowercase_basename, "backport")
     || strwrd(lowercase_basename, "bp")
-    || strcasestr(changelog, "backport"))
+    || (changelog[0] ? strcasestr(changelog, "backport") : 0))
   {
     backport = "Backport";
   }
@@ -609,23 +609,23 @@ void pkgrename(char *filename) {
           printf("\nBackport tag enabled.\n\n");
         }
         break;
-      case 'p': // [P]atch: toggle merged patch detection for app PKGs
-        if (!(category[0] == 'g' && category[1] == 'd')) {
-          printf("\nMerged patch detection not possible for non-app PKGs.\n\n");
-        } else if (merged_patch_detection) {
+      case 'p': // [P]atch: toggle changelog patch detection for app PKGs
+        if (changelog_patch_detection) {
           merged_ver = NULL;
           true_ver = app_ver;
-          merged_patch_detection = 0;
-          printf("\nMerged patch detection disabled for the current file.\n\n");
+          changelog_patch_detection = 0;
+          printf("\nChangelog patch detection disabled for the current file.\n\n");
         } else {
-          if (option_leading_zeros == 1)
-            merged_ver = merged_ver_buf;
-          else if (merged_ver_buf[0] == '0')
-            merged_ver = merged_ver_buf + 1;
-          if (merged_ver)
-            true_ver = merged_ver;
-          merged_patch_detection = 1;
-          printf("\nMerged patch detection enabled for the current file.\n\n");
+          if (true_ver_buf[0]) {
+            if (option_leading_zeros == 0 && true_ver_buf[0] == '0')
+              true_ver = true_ver_buf + 1;
+            else
+              true_ver = true_ver_buf;
+            if (category[1] == 'd' && strcmp(true_ver_buf, "01.00") != 0)
+              merged_ver = true_ver;
+          }
+          changelog_patch_detection = 1;
+          printf("\nChangelog patch detection enabled for the current file.\n\n");
         }
         break;
       case 'q': // [Q]uit: exit the program
