@@ -61,7 +61,7 @@ int get_opts(int argc, char *argv[], struct OPTION options[]) {
           size_t block_len = strlen(argv[i]);
 
           // Compare all of the block's characters with known short options
-          for (int pos = 1; pos < block_len; pos++) {
+          for (size_t pos = 1; pos < block_len; pos++) {
             for (int i_opt = 0; ; i_opt++) {
               // Character is a known short option
               if (options[i_opt].short_name == argv[i][pos]) {

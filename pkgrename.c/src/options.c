@@ -20,7 +20,7 @@ int option_verbose;
 int option_yes_to_all;
 
 void print_version(void) {
-  printf("Version 1.06b, build date: %s\n", __DATE__);
+  printf("Version 1.06c, build date: %s\n", __DATE__);
   printf("Get the latest version at "
     "\"%s\".\n", HOMEPAGE_LINK);
   printf("Report bugs, request features, or add missing data at "
@@ -42,6 +42,7 @@ void print_prompt_help(void) {
   "  - [H]elp    Print help.\n"
   "  - [Q]uit    Exit the program.\n"
   "  - [B]       (Hidden) Toggle the \"Backport\" tag.\n"
+  "  - [L]       (Hidden) Print existing changelog data.\n"
   "  - [P]       (Hidden) Toggle changelog patch detection for the current PKG.\n"
   );
 }

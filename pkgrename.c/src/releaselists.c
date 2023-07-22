@@ -14,6 +14,7 @@ struct rls_list {
 // List of release groups; [0]: Name, [1]: Additional search string
 // (Additional search strings commonly appear in original file names.)
 static struct rls_list release_groups[] = {
+  {"AUGETY"},
   {"BigBlueBox"},
   {"BlaZe", "blz"},
   {"CAF"},
