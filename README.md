@@ -99,6 +99,7 @@ The program's help screen ("pkgrename --help"):
       - [H]elp    Print help.
       - [Q]uit    Exit the program.
       - [B]       (Hidden) Toggle the "Backport" tag.
+      - [L]       (Hidden) Print existing changelog data.
       - [P]       (Hidden) Toggle changelog patch detection for the current PKG.
     
     Options:
