@@ -71,9 +71,9 @@ static int check_param_sfo(const unsigned char *param_sfo_buf, size_t buf_size)
     return 0;
 }
 
-// Loads PKG data into dynamically allocated buffers.
+// Loads PKG data into statically allocated buffers.
 // If NULL is passed for <changelog>, the PKG will not be searched for changelog
-// data and the buffer will not be allocated.
+// data.
 // Returns 0 on success and -1 on error.
 int load_pkg_data(unsigned char **param_sfo, char **changelog,
     const char *filename)
@@ -164,18 +164,15 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
 
     // Load changelog.
     if (changelog_found) {
-        if (fseek(file, changelog_offset, SEEK_SET)) {
+        if (fseek(file, changelog_offset, SEEK_SET))
             goto read_error;
-        }
 
         static char changelog_buf[MAX_SIZE_CHANGELOG + 1];
         if (fread(changelog_buf, changelog_size, 1, file) != 1)
-            goto error;
+            goto read_error;
         changelog_buf[changelog_size] = '\0'; // Make it a C string.
 
         *changelog = changelog_buf;
-    } else {
-        *changelog = NULL;
     }
 
     return 0;

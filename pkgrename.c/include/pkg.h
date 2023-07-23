@@ -1,6 +1,6 @@
-// Loads PKG data into dynamically allocated buffers.
+// Loads PKG data into statically allocated buffers.
 // If NULL is passed for <changelog>, the PKG will not be searched for changelog
-// data and the buffer will not be allocated.
+// data.
 // Returns 0 on success and -1 on error.
 int load_pkg_data(unsigned char **param_sfo, char **changelog,
     const char *filename);

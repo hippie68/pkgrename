@@ -44,7 +44,8 @@ char *tags[MAX_TAGS];
 int tagc;
 int first_run = 1;
 
-void rename_file(char *filename, char *new_basename, char *path) {
+void rename_file(char *filename, char *new_basename, char *path)
+{
     FILE *file;
     char new_filename[MAX_FILENAME_LEN];
 
@@ -79,7 +80,21 @@ error:
     exit(EXIT_FAILURE);
 }
 
-void pkgrename(char *filename) {
+// Returns the size of a file in bytes or -1 on error.
+ssize_t get_file_size(const char *filename)
+{
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL)
+        return -1;
+    if (fseek(file, 0, SEEK_END))
+        return -1;
+    ssize_t ret = ftello(file);
+    fclose(file);
+    return ret;
+}
+
+void pkgrename(char *filename)
+{
     char new_basename[MAX_FILENAME_LEN]; // Used to build the new PKG filename.
     char *basename; // "filename" without path.
     char lowercase_basename[MAX_FILENAME_LEN];
@@ -152,7 +167,7 @@ void pkgrename(char *filename) {
 
     // Load PKG data.
     unsigned char *param_sfo;
-    char *changelog;
+    char *changelog = NULL;
     int ret;
     if (strstr(format_string, "%merged_ver%")
         || strstr(format_string, "%true_ver%"))
@@ -282,25 +297,27 @@ void pkgrename(char *filename) {
 
     // Get file size in GiB.
     if (strstr(format_string, "%size%")) {
-        FILE *file = fopen(filename, "rb");
-        fseek(file, 0, SEEK_END);
-        snprintf(size, sizeof(size), "%.2f GiB", ftello(file) / 1073741824.0);
-        fclose(file);
+        ssize_t file_size = get_file_size(filename);
+        if (file_size == -1) {
+            fprintf(stderr, "Error while getting the size of file \"%s\".\n",
+                filename);
+            exit(EXIT_FAILURE);
+        }
+
+        snprintf(size, sizeof(size), "%.2f GiB", file_size / 1073741824.0);
     }
 
     // Option "online".
     if (option_online == 1) {
-        if (option_compact) {
+        if (option_compact)
             search_online(content_id, title, 1); // Silent search.
-        } else {
+        else
             search_online(content_id, title, 0);
-        }
     }
 
     // Option "mixed-case".
-    if (option_mixed_case == 1) {
+    if (option_mixed_case == 1)
         mixed_case(title);
-    }
 
     // User input loop.
     int first_loop = 1;
@@ -327,16 +344,14 @@ void pkgrename(char *filename) {
         strreplace(new_basename, "%firmware%", firmware);
         strreplace(new_basename, "%merged_ver%", merged_ver);
         strreplace(new_basename, "%region%", region);
-        if (tag_release_group[0] != '\0') {
+        if (tag_release_group[0] != '\0')
             strreplace(new_basename, "%release_group%", tag_release_group);
-        } else {
+        else
             strreplace(new_basename, "%release_group%", release_group);
-        }
-        if (tag_release[0] != '\0') {
+        if (tag_release[0] != '\0')
             strreplace(new_basename, "%release%", tag_release);
-        } else {
+        else
             strreplace(new_basename, "%release%", release);
-        }
         strreplace(new_basename, "%sdk%", sdk);
         if (strstr(format_string, "%size%"))
             strreplace(new_basename, "%size%", size);
@@ -641,7 +656,8 @@ exit:
     free(path);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     initialize_terminal();
     raw_terminal();
 
