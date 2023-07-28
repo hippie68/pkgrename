@@ -14,50 +14,50 @@ The program's help screen ("pkgrename --help"):
     Usage: pkgrename [options] [file|directory ...]
     
     Renames PS4 PKGs to match a file name pattern. The default pattern is:
-    "%%title%% [%%dlc%%] [{v%%app_ver%%}{ + v%%merged_ver%%}] [%%title_id%%] [%%release_group%%] [%%release%%] [%%backport%%]"
+    "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
     
     Pattern variables:
     ------------------
       Name             Example
       ----------------------------------------------------------------------
-      %%app%%            "App"
-      %%app_ver%%        "4.03"
-      %%backport%%       "Backport" (*)
-      %%category%%       "gp"
-      %%content_id%%     "EP4497-CUSA05571_00-00000000000GOTY1"
-      %%dlc%%            "DLC"
-      %%firmware%%       "10.01"
-      %%game%%           "Game"
-      %%merged_ver%%     "" (**)
-      %%other%%          "Other"
-      %%patch%%          "Update"
-      %%region%%         "EU"
-      %%release_group%%  "PRELUDE" (*)
-      %%release%%        "John Doe" (*)
-      %%sdk%%            "4.50"
-      %%size%%           "19.34 GiB"
-      %%title%%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
-      %%title_id%%       "CUSA05571"
-      %%true_ver%%       "4.03" (**)
-      %%type%%           "Update" (***)
-      %%version%%        "1.00"
+      %app%            "App"
+      %app_ver%        "4.03"
+      %backport%       "Backport" (*)
+      %category%       "gp"
+      %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
+      %dlc%            "DLC"
+      %firmware%       "10.01"
+      %game%           "Game"
+      %merged_ver%     "" (**)
+      %other%          "Other"
+      %patch%          "Update"
+      %region%         "EU"
+      %release_group%  "PRELUDE" (*)
+      %release%        "John Doe" (*)
+      %sdk%            "4.50"
+      %size%           "19.34 GiB"
+      %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
+      %title_id%       "CUSA05571"
+      %true_ver%       "4.03" (**)
+      %type%           "Update" (***)
+      %version%        "1.00"
     
       (*) Backports not targeting 5.05 are detected by searching file names for the
       words "BP" and "Backport" (case-insensitive). The same principle applies to
       release groups and releases.
     
       (**) Patches and apps merged with patches are detected by searching PKG files
-      for changelog information. If a patch is found, both %%merged_ver%% and
-      %%true_ver%% are the patch version. If no patch is found or if patch detection
-      is disabled (command [P]), %%merged_ver%% is empty and %%true_ver%% is %%app_ver%%.
-      %%merged_ver%% is always empty for non-app PKGs.
+      for changelog information. If a patch is found, both %merged_ver% and
+      %true_ver% are the patch version. If no patch is found or if patch detection
+      is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
+      %merged_ver% is always empty for non-app PKGs.
     
-      (***) %%type%% is %%category%% mapped to "Game,Update,DLC,App,Other".
+      (***) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
-        --set-type "Game,Patch %%app_ver%%,DLC,-,-" (no spaces before or after commas)
+        --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
       Each string must have a value. To hide a category, use the value "-".
-      %%app%%, %%dlc%%, %%game%%, %%other%%, and %%patch%% are mapped to their corresponding
-      %%type%% values. They will be displayed if the PKG is of that specific category.
+      %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
+      %type% values. They will be displayed if the PKG is of that specific category.
     
       After parsing, empty pairs of brackets, empty pairs of parentheses, and any
       remaining curly braces ("[]", "()", "{", "}") will be removed.
@@ -68,12 +68,12 @@ The program's help screen ("pkgrename --help"):
       them with curly braces. If an inner pattern variable turns out to be empty,
       the whole curly braces expression will be removed.
     
-      Example 1 - %%firmware%% is empty:
-        "%%title%% [FW %%firmware%%]"   => "Example DLC [FW ].pkg"  WRONG
-        "%%title%% [{FW %%firmware%%}]" => "Example DLC.pkg"        CORRECT
+      Example 1 - %firmware% is empty:
+        "%title% [FW %firmware%]"   => "Example DLC [FW ].pkg"  WRONG
+        "%title% [{FW %firmware%}]" => "Example DLC.pkg"        CORRECT
     
-      Example 2 - %%firmware%% has a value:
-        "%%title%% [{FW %%firmware%%}]" => "Example Game [FW 7.55].pkg"
+      Example 2 - %firmware% has a value:
+        "%title% [{FW %firmware%}]" => "Example Game [FW 7.55].pkg"
     
     Handling of special characters:
     -------------------------------
@@ -110,21 +110,21 @@ The program's help screen ("pkgrename --help"):
           --disable-colors  Disable colored text output.
       -f, --force           Force-prompt even if file names match.
       -h, --help            Print this help screen.
-      -0, --leading-zeros   Show leading zeros in pattern variables %%app_ver%%,
-                            %%firmware%%, %%merged_ver%%, %%sdk%%, %%true_ver%%, %%version%%.
+      -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
+                            %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%.
       -m, --mixed-case      Automatically apply mixed-case letter style.
           --no-placeholder  Hide characters instead of using placeholders.
       -n, --no-to-all       Do not prompt; do not actually rename any files.
                             This can be used to do a test run.
-      -o, --online          Automatically search online for %%title%%.
+      -o, --online          Automatically search online for %title%.
       -p, --pattern x       Set the file name pattern to string x.
           --placeholder x   Set the placeholder character to x.
           --print-tags      Print all built-in release tags.
       -r, --recursive       Traverse subdirectories recursively.
-          --set-type x      Set %%type%% mapping to 5 comma-separated strings x.
-          --tagfile x       Load additional %%release%% tags from text file x, one
+          --set-type x      Set %type% mapping to 5 comma-separated strings x.
+          --tagfile x       Load additional %release% tags from text file x, one
                             tag per line.
-          --tags x          Load additional %%release%% tags from comma-separated
+          --tags x          Load additional %release% tags from comma-separated
                             string x (no spaces before or after commas).
       -u, --underscores     Use underscores instead of spaces in file names.
       -v, --verbose         Display additional infos.
