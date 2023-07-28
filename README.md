@@ -7,57 +7,57 @@ The program in action looks like this:
     $ pkgrename
        "totally_not_helpful_filename.pkg"
     => "Baldur's Gate and Baldur's Gate II_ Enhanced Editions [v1.02] [CUSA15671].pkg"
-    [Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: y
+    [Y/N/A] [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [L]og [H]elp [Q]uit: y
 
 The program's help screen ("pkgrename --help"):
 
     Usage: pkgrename [options] [file|directory ...]
     
     Renames PS4 PKGs to match a file name pattern. The default pattern is:
-    "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
+    "%%title%% [%%dlc%%] [{v%%app_ver%%}{ + v%%merged_ver%%}] [%%title_id%%] [%%release_group%%] [%%release%%] [%%backport%%]"
     
     Pattern variables:
     ------------------
       Name             Example
       ----------------------------------------------------------------------
-      %app%            "App"
-      %app_ver%        "4.03"
-      %backport%       "Backport" (*)
-      %category%       "gp"
-      %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
-      %dlc%            "DLC"
-      %firmware%       "10.01"
-      %game%           "Game"
-      %merged_ver%     "" (**)
-      %other%          "Other"
-      %patch%          "Update"
-      %region%         "EU"
-      %release_group%  "PRELUDE" (*)
-      %release%        "John Doe" (*)
-      %sdk%            "4.50"
-      %size%           "19.34 GiB"
-      %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
-      %title_id%       "CUSA05571"
-      %true_ver%       "4.03" (**)
-      %type%           "Update" (***)
-      %version%        "1.00"
+      %%app%%            "App"
+      %%app_ver%%        "4.03"
+      %%backport%%       "Backport" (*)
+      %%category%%       "gp"
+      %%content_id%%     "EP4497-CUSA05571_00-00000000000GOTY1"
+      %%dlc%%            "DLC"
+      %%firmware%%       "10.01"
+      %%game%%           "Game"
+      %%merged_ver%%     "" (**)
+      %%other%%          "Other"
+      %%patch%%          "Update"
+      %%region%%         "EU"
+      %%release_group%%  "PRELUDE" (*)
+      %%release%%        "John Doe" (*)
+      %%sdk%%            "4.50"
+      %%size%%           "19.34 GiB"
+      %%title%%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
+      %%title_id%%       "CUSA05571"
+      %%true_ver%%       "4.03" (**)
+      %%type%%           "Update" (***)
+      %%version%%        "1.00"
     
       (*) Backports not targeting 5.05 are detected by searching file names for the
       words "BP" and "Backport" (case-insensitive). The same principle applies to
       release groups and releases.
     
       (**) Patches and apps merged with patches are detected by searching PKG files
-      for changelog information. If a patch is found, both %merged_ver% and
-      %true_ver% are the patch version. If no patch is found or if patch detection
-      is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
-      %merged_ver% is always empty for non-app PKGs.
+      for changelog information. If a patch is found, both %%merged_ver%% and
+      %%true_ver%% are the patch version. If no patch is found or if patch detection
+      is disabled (command [P]), %%merged_ver%% is empty and %%true_ver%% is %%app_ver%%.
+      %%merged_ver%% is always empty for non-app PKGs.
     
-      (***) %type% is %category% mapped to "Game,Update,DLC,App,Other".
+      (***) %%type%% is %%category%% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
-        --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
+        --set-type "Game,Patch %%app_ver%%,DLC,-,-" (no spaces before or after commas)
       Each string must have a value. To hide a category, use the value "-".
-      %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
-      %type% values. They will be displayed if the PKG is of that specific category.
+      %%app%%, %%dlc%%, %%game%%, %%other%%, and %%patch%% are mapped to their corresponding
+      %%type%% values. They will be displayed if the PKG is of that specific category.
     
       After parsing, empty pairs of brackets, empty pairs of parentheses, and any
       remaining curly braces ("[]", "()", "{", "}") will be removed.
@@ -68,12 +68,12 @@ The program's help screen ("pkgrename --help"):
       them with curly braces. If an inner pattern variable turns out to be empty,
       the whole curly braces expression will be removed.
     
-      Example 1 - %firmware% is empty:
-        "%title% [FW %firmware%]"   => "Example DLC [FW ].pkg"  WRONG
-        "%title% [{FW %firmware%}]" => "Example DLC.pkg"        CORRECT
+      Example 1 - %%firmware%% is empty:
+        "%%title%% [FW %%firmware%%]"   => "Example DLC [FW ].pkg"  WRONG
+        "%%title%% [{FW %%firmware%%}]" => "Example DLC.pkg"        CORRECT
     
-      Example 2 - %firmware% has a value:
-        "%title% [{FW %firmware%}]" => "Example Game [FW 7.55].pkg"
+      Example 2 - %%firmware%% has a value:
+        "%%title%% [{FW %%firmware%%}]" => "Example Game [FW 7.55].pkg"
     
     Handling of special characters:
     -------------------------------
@@ -86,43 +86,46 @@ The program's help screen ("pkgrename --help"):
     
     Interactive prompt:
     -------------------
-      - [Y]es     Rename the file as seen.
-      - [N]o      Skip the file and drop all changes.
-      - [A]ll     Same as yes, but also for all future files.
-      - [E]dit    Prompt to manually edit the title.
-      - [T]ag     Prompt to enter a release group or a release.
-      - [M]ix     Convert the letter case to mixed-case style.
-      - [O]nline  Search the PS Store online for title information.
-      - [R]eset   Undo all changes.
-      - [C]hars   Reveal special characters in the title.
-      - [S]FO     Show file's param.sfo information.
-      - [H]elp    Print help.
-      - [Q]uit    Exit the program.
-      - [B]       (Hidden) Toggle the "Backport" tag.
-      - [L]       (Hidden) Print existing changelog data.
-      - [P]       (Hidden) Toggle changelog patch detection for the current PKG.
+      - [Y]es      Rename the file as seen.
+      - [N]o       Skip the file and drop all changes.
+      - [A]ll      Same as yes, but also for all future files.
+      - [E]dit     Prompt to manually edit the title.
+      - [T]ag      Prompt to enter a release group or a release.
+      - [M]ix      Convert the letter case to mixed-case style.
+      - [O]nline   Search the PS Store online for title information.
+      - [R]eset    Undo all changes.
+      - [C]hars    Reveal special characters in the title.
+      - [S]FO      Show file's param.sfo information.
+      - [L]og      Print existing changelog data.
+      - [H]elp     Print help.
+      - [Q]uit     Exit the program.
+      - [B]        Toggle the "Backport" tag.
+      - [P]        Toggle changelog patch detection for the current PKG.
+      - Backspace  Go back to the previous PKG.
+      - Space      Return to the current PKG.
     
     Options:
     --------
       -c, --compact         Hide files that are already renamed.
-      -f, --force           Force-prompt even when file names match.
+          --disable-colors  Disable colored text output.
+      -f, --force           Force-prompt even if file names match.
       -h, --help            Print this help screen.
-      -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
-                            %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%.
+      -0, --leading-zeros   Show leading zeros in pattern variables %%app_ver%%,
+                            %%firmware%%, %%merged_ver%%, %%sdk%%, %%true_ver%%, %%version%%.
       -m, --mixed-case      Automatically apply mixed-case letter style.
           --no-placeholder  Hide characters instead of using placeholders.
       -n, --no-to-all       Do not prompt; do not actually rename any files.
                             This can be used to do a test run.
-      -o, --online          Automatically search online for %title%.
+      -o, --online          Automatically search online for %%title%%.
       -p, --pattern x       Set the file name pattern to string x.
           --placeholder x   Set the placeholder character to x.
-          --print-database  Print all current release database entries.
+          --print-tags      Print all built-in release tags.
       -r, --recursive       Traverse subdirectories recursively.
-          --set-type x      Set %type% mapping to 5 comma-separated strings x.
-          --tags x          Load additional %release% tags from comma-separated
-                            string x (no spaces before or after commas).
-          --tagfile x       Load additional %release% tags from text file x, one
+          --set-type x      Set %%type%% mapping to 5 comma-separated strings x.
+          --tagfile x       Load additional %%release%% tags from text file x, one
                             tag per line.
+          --tags x          Load additional %%release%% tags from comma-separated
+                            string x (no spaces before or after commas).
       -u, --underscores     Use underscores instead of spaces in file names.
       -v, --verbose         Display additional infos.
           --version         Print the current pkgrename version.
@@ -159,17 +162,23 @@ If you use a text file, each line must contain a single tag:
 
 ...for Linux/Unix (requires libcurl development files):
 
-    gcc pkgrename.c src/*.c -o pkgrename -lcurl -s -O3
+    gcc -Wall -Wextra --pedantic pkgrename.c src/*.c -o pkgrename -lcurl -pthread -s -O3
 
 ...for Windows:
 
-    x86_64-w64-mingw32-gcc-win32 pkgrename.c src/*.c -o pkgrename.exe --static -s -O3
+    x86_64-w64-mingw32-gcc-win32 -Wall -Wextra -pedantic pkgrename.c src/*.c -o pkgrename.exe --static -pthread -s -O3
 
 Or download a compiled Windows release at https://github.com/hippie68/pkgrename/releases.
 
 Please report bugs, make feature requests, or add missing data at https://github.com/hippie68/pkgrename/issues.
 
-#### For Windows: How to run pkgrename.exe from anywhere with modified arguments:
+### For Windows users:
+
+On Windows 10/11, it is **strongly recommended** to activate the UTF-8 beta feature: Settings - Time & Language - Language - Administrative language settings - Change system locale... - Beta: Use Unicode UTF-8 for worldwide language support.  
+For Windows 10 users it is recommended to use the new Windows Terminal application (which is now the default terminal in Windows 11) instead of the standard cmd.exe command prompt.  
+When using both the UTF-8 beta feature and Windows Terminal, pkgrename should work as intended.
+
+#### How to run pkgrename.exe from anywhere with modified arguments:
 
 Put pkgrename.exe in a folder (you can also put other command line programs there).
 Inside that folder, create a new batch file named "pkgrename.bat" and open it with Notepad.
