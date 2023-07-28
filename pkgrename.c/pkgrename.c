@@ -7,12 +7,12 @@
 #include "include/characters.h"
 #include "include/colors.h"
 #include "include/common.h"
-#include "include/dirparse.h"
 #include "include/getopts.h"
 #include "include/onlinesearch.h"
 #include "include/options.h"
 #include "include/pkg.h"
 #include "include/releaselists.h"
+#include "include/scan.h"
 #include "include/strings.h"
 #include "include/terminal.h"
 
@@ -42,9 +42,32 @@ struct custom_category custom_category =
     {"Game", "Update", "DLC", "App", "Other"};
 char *tags[MAX_TAGS];
 int tagc;
-int first_run = 1;
+struct scan_result *scan_backup; // Stores a scan result for the space hotkey.
 
-void rename_file(char *filename, char *new_basename, char *path)
+// Debug function that prints the linked list's contents.
+void print_linked_list(void)
+{
+    //pthread_mutex_lock(&mutex);
+    fputs("\nLinked list filenames:\n", stderr);
+    size_t i = 1;
+    struct scan_result *scan = first_scan;
+    while (scan && scan != END_OF_SCAN) {
+        fprintf(stderr, "%04zu; %p%s:\n", i, (void *) scan, scan == first_scan ? " (first_scan)" : scan == last_scan ? " (last_scan)" : "");
+        fprintf(stderr, ".filename: %s\n", scan->filename);
+        fprintf(stderr, ".filename_is_allocated: %d\n", scan->filename_is_allocated);
+        fprintf(stderr, ".param_sfo: %s\n", scan->param_sfo ? "set" : "NULL");
+        fprintf(stderr, ".changelog: %s\n", scan->changelog ? "set" : "NULL");
+        fprintf(stderr, ".next: %s\n", scan->next == NULL ? "NULL" : scan->next == last_scan ? "last_scan" : scan->next == END_OF_SCAN ? "END_OF_SCAN" : "set");
+        fprintf(stderr, ".next: %p\n", (void *) scan->next);
+        fprintf(stderr, ".prev: %s\n", scan->prev ? "set" : "NULL");
+        fprintf(stderr, ".prev: %p\n", (void *) scan->prev);
+        scan = scan->next;
+        ++i;
+    }
+    //pthread_mutex_unlock(&mutex);
+}
+
+static void rename_file(char *filename, char *new_basename, char *path)
 {
     FILE *file;
     char new_filename[MAX_FILENAME_LEN];
@@ -81,24 +104,63 @@ error:
 }
 
 // Returns the size of a file in bytes or -1 on error.
-ssize_t get_file_size(const char *filename)
+static ssize_t get_file_size(const char *filename)
 {
     FILE *file = fopen(filename, "rb");
     if (file == NULL)
         return -1;
-    if (fseek(file, 0, SEEK_END))
+    if (fseek(file, 0, SEEK_END)) {
+        fclose(file);
         return -1;
+    }
     ssize_t ret = ftello(file);
     fclose(file);
     return ret;
 }
 
-void pkgrename(char *filename)
+// Uses information retreived by a previous scan to rename a PS4 PKG file.
+// The .next member may not be accessed without a mutex lock.
+// Return value:
+//   -1 if the scan result must be deleted.
+//    1 if the user has requested to go back to the previous scan result.
+//    2 if the user has requested to return to the current scan result.
+//    0 otherwise.
+static int pkgrename(struct scan_result *scan)
 {
+    static int first_run = 1; // Used to decide when to print newlines.
+
+    // Don't proceed if the scan was aborted due to an error.
+    static int error_streak = 0;
+    if (scan->error) {
+        // Make sure to print consecutive errors as a block.
+        if (error_streak == 0) {
+            if (first_run == 1)
+                first_run = 0;
+            else
+                putchar('\n');
+        }
+
+        print_scan_error(scan);
+        //delete_scan_result(scan);
+        error_streak = 1;
+        return -1;
+    } else {
+        error_streak = 0;
+    }
+
+    if (option_compact == 0) {
+        if (first_run == 1)
+            first_run = 0;
+        else
+            putchar('\n');
+    }
+
     char new_basename[MAX_FILENAME_LEN]; // Used to build the new PKG filename.
+    char *filename = scan->filename;
     char *basename; // "filename" without path.
     char lowercase_basename[MAX_FILENAME_LEN];
     char *path; // "filename" without file.
+    static char *old_path = NULL; // Backup to decide when to print dir changes.
     char tag_release_group[MAX_TAG_LEN + 1] = "";
     char tag_release[MAX_TAG_LEN + 1] = "";
     int spec_chars_current, spec_chars_total;
@@ -150,40 +212,35 @@ void pkgrename(char *filename)
 #pragma GCC diagnostic pop
     path[path_len] = '\0';
 
+    // Print directory if it's different (early).
+    if (option_compact == 0) {
+        if (old_path && strcmp(path, old_path) != 0) {
+            if (option_disable_colors == 0)
+                fputs(GRAY, stdout);
+            printf("Current directory: %s\n\n", path);
+            if (option_disable_colors == 0)
+                fputs(RESET, stdout);
+        }
+        free(old_path);
+        old_path = path;
+    }
+
     // Create a lowercase copy of "basename".
     strcpy(lowercase_basename, basename);
     for (size_t i = 0; i < strlen(lowercase_basename); i++)
         lowercase_basename[i] = tolower(lowercase_basename[i]);
 
     // Print current basename (early).
-    if (!option_compact) {
-        if (first_run) {
-            printf("   \"%s\"\n", basename);
-            first_run = 0;
-        } else {
-            printf("\n   \"%s\"\n", basename);
-        }
-    }
+    if (option_compact == 0)
+        printf("   \"%s\"\n", basename);
 
     // Load PKG data.
-    unsigned char *param_sfo;
-    char *changelog = NULL;
-    int ret;
-    if (strstr(format_string, "%merged_ver%")
-        || strstr(format_string, "%true_ver%"))
-        ret = load_pkg_data(&param_sfo, &changelog, filename);
-    else
-        ret = load_pkg_data(&param_sfo, NULL, filename);
-    if (ret) {
-        fprintf(stderr, "Error while loading file \"%s\".\n", filename);
-        exit(EXIT_FAILURE);
-    }
-
+    unsigned char *param_sfo = scan->param_sfo;
+    char *changelog = scan->changelog;
     // APP_VER
     app_ver = (char *) get_param_sfo_value(param_sfo, "APP_VER");
     if (app_ver && option_leading_zeros == 0 && app_ver[0] == '0')
         app_ver++;
-
     // CATEGORY
     category = (char *) get_param_sfo_value(param_sfo, "CATEGORY");
     if (category) {
@@ -204,7 +261,6 @@ void pkgrename(char *filename)
             other = type;
         }
     }
-
     // CONTENT_ID
     content_id = (char *) get_param_sfo_value(param_sfo, "CONTENT_ID");
     if (content_id) {
@@ -216,7 +272,6 @@ void pkgrename(char *filename)
             case 'U': region = "US"; break;
         }
     }
-
     // PUBTOOLINFO
     char *pubtoolinfo = (char *) get_param_sfo_value(param_sfo, "PUBTOOLINFO");
     if (pubtoolinfo) {
@@ -235,7 +290,6 @@ void pkgrename(char *filename)
             }
         }
     }
-
     // SYSTEM_VER
     uint32_t *system_ver = (uint32_t *) get_param_sfo_value(param_sfo,
         "SYSTEM_VER");
@@ -252,24 +306,21 @@ void pkgrename(char *filename)
             firmware[2] = '.';
         }
     }
-
     // TITLE
     title_backup = (char *) get_param_sfo_value(param_sfo, "TITLE");
     if (title_backup) {
         strncpy(title, title_backup, MAX_TITLE_LEN);
         title[MAX_TITLE_LEN - 1] = '\0';
     }
-
     // TITLE_ID
     title_id = (char *) get_param_sfo_value(param_sfo, "TITLE_ID");
-
     // VERSION
     version = (char *) get_param_sfo_value(param_sfo, "VERSION");
     if (option_leading_zeros == 0 && version[0] == '0')
         version++;
 
     // Detect changelog patch level.
-    if (changelog && get_patch_version(true_ver_buf, changelog)) {
+    if (changelog && store_patch_version(true_ver_buf, changelog)) {
         if (option_leading_zeros == 0 && true_ver_buf[0] == '0')
             true_ver = true_ver_buf + 1;
         else
@@ -294,6 +345,8 @@ void pkgrename(char *filename)
     // Detect releases.
     release_group = get_release_group(lowercase_basename);
     release = get_uploader(lowercase_basename);
+    if (release == NULL && changelog)
+        release = get_uploader(changelog);
 
     // Get file size in GiB.
     if (strstr(format_string, "%size%")) {
@@ -418,16 +471,22 @@ void pkgrename(char *filename)
         /**********************************************************************/
 
         // Print current basename (late).
-        if (option_compact) {
-            if (strcmp(basename, new_basename) == 0) {
+        if (option_compact == 1 && first_loop == 1) {
+            if (option_force == 0 && strcmp(basename, new_basename) == 0) {
                 goto exit;
             } else {
-                if (first_run) {
-                    printf("   \"%s\"\n", basename);
+                if (first_run)
                     first_run = 0;
-                } else if (first_loop) {
-                    printf("\n   \"%s\"\n", basename);
-                }
+                else
+                    putchar('\n');
+
+                // Print directory if it's different (late).
+                if (old_path && strcmp(path, old_path) != 0)
+                    printf(GRAY "Current directory: %s\n\n" RESET, path);
+                free(old_path);
+                old_path = path;
+
+                printf("   \"%s\"\n", basename);
             }
             first_loop = 0;
         }
@@ -437,12 +496,19 @@ void pkgrename(char *filename)
 
         // Print number of special characters.
         if (option_verbose) {
-            printf(BRIGHT_YELLOW " (%d/%d)" RESET, spec_chars_current,
-            spec_chars_total);
+            if (option_disable_colors == 0)
+                fputs(BRIGHT_YELLOW, stdout);
+            printf(" (%d/%d)", spec_chars_current, spec_chars_total);
+            if (option_disable_colors == 0)
+                fputs(RESET, stdout);
         } else if (spec_chars_current) {
-            printf(BRIGHT_YELLOW " (%d)" RESET, spec_chars_current);
+            if (option_disable_colors == 0)
+                fputs(BRIGHT_YELLOW, stdout);
+            printf(" (%d)", spec_chars_current);
+            if (option_disable_colors == 0)
+                fputs(RESET, stdout);
         }
-        printf("\n");
+        putchar('\n');
 
         // Exit if new basename too long.
         if (strlen(new_basename) > MAX_FILENAME_LEN - 1) {
@@ -458,12 +524,13 @@ void pkgrename(char *filename)
         }
 
         // Option -n: don't do anything else.
-        if (option_no_to_all == 1) goto exit;
+        if (option_no_to_all == 1)
+            goto exit;
 
         // Quit if already renamed.
-        if (!prompted_once && option_force == 0
+        if (prompted_once == 0 && option_force == 0
             && strcmp(basename, new_basename) == 0) {
-            printf("Nothing to do.\n");
+            puts("Nothing to do.");
             goto exit;
         } else {
             prompted_once = 1;
@@ -485,13 +552,30 @@ void pkgrename(char *filename)
 #endif
 
         // Read user input.
-        fputs("[Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: ", stdout);
+        fputs("[Y/N/A] [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [L]og [H]elp [Q]uit: ", stdout);
         do {
 #ifdef _WIN32
             c = getch();
 #else
             c = getchar();
 #endif
+
+            // Return to previous file if backspace was pressed.
+#ifdef _WIN32
+            if (c == 8 && scan->prev != NULL) {
+#else
+            if (c == 127 && scan->prev != NULL) {
+#endif
+                putchar('\n');
+                return 1;
+            }
+
+            // Return to current file if space was pressed.
+            if (c == 32 && scan_backup != NULL) {
+                putchar('\n');
+                return 2;
+            }
+
         } while (strchr("ynaetmorcshqblp", c) == NULL);
         printf("%c\n", c);
 
@@ -592,8 +676,11 @@ void pkgrename(char *filename)
                         printf("%c", title[i]);
                     } else {
                         count++;
-                        printf(BRIGHT_YELLOW "#%d" RESET,
-                        title[i]);
+                        if (option_disable_colors == 0)
+                            fputs(BRIGHT_YELLOW, stdout);
+                        printf("#%u", (unsigned char) title[i]);
+                        if (option_disable_colors == 0)
+                            fputs(RESET, stdout);
                     }
                 }
                 printf("\"\n%d special character%c found.\n\n", count,
@@ -619,10 +706,13 @@ void pkgrename(char *filename)
                 }
                 break;
             case 'l': // Change[l]og: print existing changelog data.
-                if (changelog)
+                if (changelog) {
                     printf("\n%s\n\n", changelog);
-                else
+                    print_changelog_tags(changelog);
+                    putchar('\n');
+                } else {
                     printf("\nThis file does not contain changelog data.\n\n");
+                }
                 break;
             case 'p': // [P]atch: toggle changelog patch detection for app PKGs.
                 if (changelog_patch_detection) {
@@ -647,13 +737,124 @@ void pkgrename(char *filename)
                 }
                 break;
             case 'q': // [Q]uit: exit the program.
-                free(path);
+                free(old_path);
                 exit(EXIT_SUCCESS);
         }
     }
 
 exit:
-    free(path);
+    return 0;
+}
+
+// Background thread that scans PS4 PKG files for data required for renaming.
+// The data is stored in a global linked list.
+static void *scan_files(void *param)
+{
+    (void) param;
+
+    if (noptc == 0) { // Use current directory.
+        if (parse_directory("."))
+            return NULL;
+    } else { // Find PKGs and run pkgrename() on them.
+        DIR *dir;
+        for (int i = 0; i < noptc; i++) {
+            // Directory
+            if ((dir = opendir(nopts[i])) != NULL) {
+                closedir(dir);
+                if (parse_directory(nopts[i]))
+                    return NULL;
+            // File
+            } else {
+                struct scan_result *scan = scan_file(nopts[i], 0);
+                if (scan)
+                    add_scan_result(scan);
+            }
+        }
+    }
+
+    int err;
+
+    if ((err = pthread_mutex_lock(&mutex)) != 0)
+        exit_err(err, __func__, __LINE__);
+    if (last_scan)
+        last_scan->next = END_OF_SCAN;
+    if ((err = pthread_mutex_unlock(&mutex)) != 0)
+        exit_err(err, __func__, __LINE__);
+
+    if ((err = pthread_cond_signal(&new_file_ready)) != 0)
+        exit_err(err, __func__, __LINE__);
+
+    return NULL;
+}
+
+// Runs pkgrename() on scan results as they become available.
+static void parse_scan_results(void)
+{
+    int err;
+
+start:
+    if ((err = pthread_mutex_lock(&mutex)) != 0)
+        exit_err(err, __func__, __LINE__);
+    if ((err = pthread_cond_wait(&new_file_ready, &mutex)) != 0)
+        exit_err(err, __func__, __LINE__);
+    if ((err = pthread_mutex_unlock(&mutex)) != 0)
+        exit_err(err, __func__, __LINE__);
+
+    struct scan_result *scan = first_scan;
+    if (scan == NULL || scan == END_OF_SCAN)
+        return;
+
+    int option_force_backup = option_force;
+    while (1) {
+        // Reset scan_backup if it's reached again without pressing space.
+        if (scan == scan_backup)
+            scan_backup = NULL;
+
+        int ret = pkgrename(scan);
+
+        // Go back to the previous scan result if requested.
+        if (ret == 1) {
+            if (scan_backup == NULL)
+                scan_backup = scan;
+            scan = scan->prev; // pkgrename() made sure it's not NULL.
+            option_force = 1;
+            continue;
+        }
+
+        // Return to the current scan result if requested.
+        if (ret == 2) {
+            scan = scan_backup;
+            scan_backup = NULL;
+            option_force = option_force_backup;
+            continue;
+        }
+
+        // Delete the current node due to file error.
+        if (ret == -1) {
+            struct scan_result *prev_scan = scan->prev;
+            delete_scan_result(scan);
+            if (prev_scan == NULL)
+                goto start;
+            else
+                scan = prev_scan;
+        }
+
+        // Proceed with the next scan result...
+        if ((err = pthread_mutex_lock(&mutex)) != 0)
+            exit_err(err, __func__, __LINE__);
+        if (scan->next == NULL) {
+            if ((err = pthread_cond_wait(&new_file_ready, &mutex)) != 0)
+                exit_err(err, __func__, __LINE__);
+        }
+        if (scan->next == END_OF_SCAN) { // ...until there are no results left.
+            if ((err = pthread_mutex_unlock(&mutex)) != 0)
+                exit_err(err, __func__, __LINE__);
+            return;
+        }
+        scan = scan->next;
+        if ((err = pthread_mutex_unlock(&mutex)) != 0)
+            exit_err(err, __func__, __LINE__);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -661,27 +862,25 @@ int main(int argc, char *argv[])
     initialize_terminal();
     raw_terminal();
 
+#ifdef _WIN32
+    // Disable colors if the terminal is not Windows Terminal.
+    if (getenv("WT_SESSION") == NULL)
+        option_disable_colors = 1;
+#endif
+
     parse_options(argc, argv);
 
-    if (noptc == 0) { // Use current directory
-        parse_directory(".");
-    } else { // Find PKGs and run pkgrename() on them
-        DIR *dir;
-        for (int i = 0; i < noptc; i++) {
-            // Directory
-            if ((dir = opendir(nopts[i])) != NULL) {
-                closedir(dir);
-                parse_directory(nopts[i]);
-            // File
-            } else {
-                pkgrename(nopts[i]);
-            }
-        }
-    }
+    // Run file scans in a separate thread.
+    pthread_t file_thread;
+    int err;
+    if ((err = pthread_create(&file_thread, NULL, scan_files, NULL)) != 0)
+        exit_err(err, __func__, __LINE__);
 
-#ifdef _WIN32
-    reset_terminal();
-#endif
+    // Parse the scan results in the main thread.
+    parse_scan_results();
+
+    // Debug
+    //print_linked_list();
 
     exit(EXIT_SUCCESS);
 }

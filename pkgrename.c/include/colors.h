@@ -1,4 +1,6 @@
-#ifndef _WIN32 // Colors not supported by the default terminal in Windows (yet)
+#ifndef COLORS_H
+#define COLORS_H
+
 #define RESET "\033[0m"
 
 #define BLACK "\033[0;30m"
@@ -36,42 +38,5 @@
 #define BG_BRIGHT_PURPLE "\033[0;105m"
 #define BG_BRIGHT_CYAN "\033[0;106m"
 #define BG_BRIGHT_GRAY "\033[0;107m"
-#else
-#define RESET
 
-#define BLACK
-#define RED
-#define GREEN
-#define YELLOW
-#define BLUE
-#define PURPLE
-#define CYAN
-#define GRAY
-
-#define BRIGHT_BLACK
-#define BRIGHT_RED
-#define BRIGHT_GREEN
-#define BRIGHT_YELLOW
-#define BRIGHT_BLUE
-#define BRIGHT_PURPLE
-#define BRIGHT_CYAN
-#define BRIGHT_GRAY
-
-#define BG_BLACK
-#define BG_RED
-#define BG_GREEN
-#define BG_YELLOW
-#define BG_BLUE
-#define BG_PURPLE
-#define BG_CYAN
-#define BG_GRAY
-
-#define BG_BRIGHT_BLACK
-#define BG_BRIGHT_RED
-#define BG_BRIGHT_GREEN
-#define BG_BRIGHT_YELLOW
-#define BG_BRIGHT_BLUE
-#define BG_BRIGHT_PURPLE
-#define BG_BRIGHT_CYAN
-#define BG_BRIGHT_GRAY
 #endif

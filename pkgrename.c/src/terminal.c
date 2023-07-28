@@ -88,7 +88,7 @@ int getkey() {
 
   // Repeat until key pressed
   while (ReadConsoleInput(hStdin, irInBuf, 128, &cNumRead)) {
-    for (int i = 0; i < cNumRead; i++) {
+    for (size_t i = 0; i < cNumRead; i++) {
       switch(irInBuf[i].EventType) {
         case KEY_EVENT:
           if (irInBuf[i].Event.KeyEvent.bKeyDown) {
@@ -193,7 +193,9 @@ void scan_string(char *string, size_t max_size, char *default_string, char *(*f)
         }
         break;
       default: // Regular key
+        #ifndef _WIN32
         Default:
+        #endif
         #ifdef _WIN32
         key = WIN_KEY;
         #endif

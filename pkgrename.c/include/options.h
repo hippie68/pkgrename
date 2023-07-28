@@ -1,8 +1,8 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
-// Default options
 extern int option_compact;
+extern int option_disable_colors;
 extern int option_force;
 extern int option_mixed_case;
 extern int option_no_placeholder;

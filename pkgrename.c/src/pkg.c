@@ -1,4 +1,6 @@
+#include "../include/common.h"
 #include "../include/pkg.h"
+#include "../include/scan.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,26 +73,24 @@ static int check_param_sfo(const unsigned char *param_sfo_buf, size_t buf_size)
     return 0;
 }
 
-// Loads PKG data into statically allocated buffers.
-// If NULL is passed for <changelog>, the PKG will not be searched for changelog
-// data.
+// Loads PKG data into dynamically allocated buffers and passes their pointers.
 // Returns 0 on success and -1 on error.
 int load_pkg_data(unsigned char **param_sfo, char **changelog,
     const char *filename)
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wscalar-storage-order"
+    int retval;
+
     FILE *file = fopen(filename, "rb");
-    if (file == NULL) {
-        fprintf(stderr, "Could not open file \"%s\".\n", filename);
-        return -1;
-    }
+    if (file == NULL)
+        return SCAN_ERROR_OPEN_FILE;
 
     struct pkg_header pkg_header;
     if (fread(&pkg_header, sizeof(pkg_header), 1, file) != 1)
         goto read_error;
     if (pkg_header.magic != MAGIC_NUMBER_PKG) {
-        fprintf(stderr, "File \"%s\" is not a PS4 PKG.\n", filename);
+        retval = SCAN_ERROR_NOT_A_PKG;
         goto error;
     }
 
@@ -109,19 +109,15 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
         if (entry.id == 0x00001000) { // param.sfo
             param_sfo_offset = entry.offset;
             if (entry.size > MAX_SIZE_PARAM_SFO) {
-                fprintf(stderr, "Invalid size of file \"param.sfo\" in PKG file"
-                    "\"%s\".\n", filename);
+                retval = SCAN_ERROR_PARAM_SFO_INVALID_SIZE;
                 goto error;
             }
             param_sfo_size = entry.size;
             param_sfo_found = 1;
-            if (changelog == NULL)
-                break;
-        } else if (changelog && entry.id == 0x00001260) { // changeinfo.xml
+        } else if (entry.id == 0x00001260) { // changeinfo.xml
             changelog_offset = entry.offset;
             if (entry.size > MAX_SIZE_CHANGELOG) {
-                fprintf(stderr, "Invalid size of file \"changeinfo.xml\" in PKG"
-                    " file \"%s\".\n", filename);
+                retval = SCAN_ERROR_CHANGELOG_INVALID_SIZE;
                 goto error;
             }
             changelog_size = entry.size;
@@ -129,26 +125,29 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
         }
     }
 
-    // Load param.sfo (mandatory).
+    // Load param.sfo.
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     if (param_sfo_found) {
         if (fseek(file, param_sfo_offset, SEEK_SET))
             goto read_error;
 
-        static unsigned char param_sfo_buf[MAX_SIZE_PARAM_SFO + 1];
+        unsigned char *param_sfo_buf = malloc(param_sfo_size + 1);
+        if (param_sfo_buf == NULL) {
+            retval = SCAN_ERROR_OUT_OF_MEMORY;
+            goto read_error;
+        }
+
         if (fread(param_sfo_buf, param_sfo_size, 1, file) != 1)
             goto read_error;
 
         if ((*(struct param_sfo_header *) param_sfo_buf).magic
             != MAGIC_NUMBER_PARAM_SFO) {
-            fprintf(stderr, "Invalid file format of file \"param.sfo\" in PKG"
-                " file \"%s\".\n", filename);
+            retval = SCAN_ERROR_PARAM_SFO_INVALID_FORMAT;
             goto error;
         }
 
         if (check_param_sfo(param_sfo_buf, param_sfo_size)) {
-            fprintf(stderr, "Detected invalid data in file \"param.sfo\" in PKG"
-                " file \"%s\".\nThe PKG file may have been tampered with.\n",
-                filename);
+            retval = SCAN_ERROR_PARAM_SFO_INVALID_DATA;
             goto error;
         }
 
@@ -157,8 +156,7 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
 
         *param_sfo = param_sfo_buf;
     } else {
-        fprintf(stderr,
-            "File \"param.sfo\" not found in PKG file \"%s\".\n", filename);
+        retval = SCAN_ERROR_PARAM_SFO_NOT_FOUND;
         goto error;
     }
 
@@ -167,28 +165,35 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
         if (fseek(file, changelog_offset, SEEK_SET))
             goto read_error;
 
-        static char changelog_buf[MAX_SIZE_CHANGELOG + 1];
+        char *changelog_buf = malloc(changelog_size + 1);
+        if (changelog_buf == NULL) {
+            retval = SCAN_ERROR_OUT_OF_MEMORY;
+            goto error;
+        }
         if (fread(changelog_buf, changelog_size, 1, file) != 1)
             goto read_error;
         changelog_buf[changelog_size] = '\0'; // Make it a C string.
 
         *changelog = changelog_buf;
+    } else {
+        *changelog = NULL;
     }
 
+    fclose(file);
     return 0;
 
 read_error:
-    fprintf(stderr, "Could not read from file \"%s\".\n", filename);
+    retval = SCAN_ERROR_READ_FILE;
 error:
     fclose(file);
-    return -1;
+    return retval;
 #pragma GCC diagnostic pop
 }
 
 // Loads the true patch version from a string and stores it in a buffer;
 // the buffer must be of size 6.
-// Returns -1 on read error, 1 if the patch version has been found, otherwise 0.
-int get_patch_version(char *version_buf, const char *changelog)
+// Returns 1 if the patch version has been found, otherwise 0.
+int store_patch_version(char *version_buf, const char *changelog)
 {
     // Grab the highest patch version.
     const char *bufp = changelog;

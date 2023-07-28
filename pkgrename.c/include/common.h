@@ -18,10 +18,6 @@
 #define HOMEPAGE_LINK "https://github.com/hippie68/pkgrename"
 #define SUPPORT_LINK "https://github.com/hippie68/pkgrename/issues"
 
-extern char format_string[MAX_FORMAT_STRING_LEN];
-extern char placeholder_char;
-extern char *tags[MAX_TAGS];
-extern int tagc;
 struct custom_category {
   char *game;
   char *patch;
@@ -31,5 +27,11 @@ struct custom_category {
 };
 
 extern struct custom_category custom_category;
+extern char format_string[MAX_FORMAT_STRING_LEN];
+extern char placeholder_char;
+extern char *tags[MAX_TAGS];
+extern int tagc;
+
+void exit_err(int err, const char *function_name, int line);
 
 #endif
