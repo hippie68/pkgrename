@@ -2,6 +2,17 @@
 
 pkgrename.c is a standalone, advanced version of the original Bash script, written in C. It currently works on Linux and Windows, possibly on other systems, too.
 
+
+- [Manual](#manual)
+  - [Tagging](#tagging)
+  - [Querying (for scripts/tools)](#querying)
+  - [How to compile](#how-to-compile)
+- [For Windows users](#for-windows-users)
+  - [How to run pkgrename.exe from anywhere](#how-to-run-pkgrenameexe-from-anywhere-with-modified-arguments)
+- [Original Bash script](#pkgrename-original-bash-script-superseded-by-pkgrenamec)
+
+# Manual
+
 The program in action looks like this:
 
     $ pkgrename
@@ -136,35 +147,7 @@ The program's help screen ("pkgrename --help"):
           --version              Print the current pkgrename version.
       -y, --yes-to-all           Do not prompt; rename all files automatically.
 
-    
-    Options:
-    --------
-      -c, --compact         Hide files that are already renamed.
-          --disable-colors  Disable colored text output.
-      -f, --force           Force-prompt even if file names match.
-      -h, --help            Print this help screen.
-      -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,
-                            %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%.
-      -m, --mixed-case      Automatically apply mixed-case letter style.
-          --no-placeholder  Hide characters instead of using placeholders.
-      -n, --no-to-all       Do not prompt; do not actually rename any files.
-                            This can be used to do a test run.
-      -o, --online          Automatically search online for %title%.
-      -p, --pattern x       Set the file name pattern to string x.
-          --placeholder x   Set the placeholder character to x.
-          --print-tags      Print all built-in release tags.
-      -r, --recursive       Traverse subdirectories recursively.
-          --set-type x      Set %type% mapping to 5 comma-separated strings x.
-          --tagfile x       Load additional %release% tags from text file x, one
-                            tag per line.
-          --tags x          Load additional %release% tags from comma-separated
-                            string x (no spaces before or after commas).
-      -u, --underscores     Use underscores instead of spaces in file names.
-      -v, --verbose         Display additional infos.
-          --version         Print the current pkgrename version.
-      -y, --yes-to-all      Do not prompt; rename all files automatically.
-
-#### Tagging
+## Tagging
 
 You can organize your PKGs by tagging them:
 
@@ -191,11 +174,11 @@ If you use a text file, each line must contain a single tag:
     Umbrella Corp.
     john_wayne
 
-#### Querying
+## Querying
 Use querying to receive name suggestions for your scripts/tools, for example:
 
     $ pkgrename -p '%title% [%true_ver%]' --query ps4.pkg ps3.pkg flower.gif subdirectory/
-    Super Mario Bros [v1.00].pkg
+    Super Mario Bros. [1.00].pkg
     ps3.pkg
     flower.gif
     subdirectory/
@@ -205,7 +188,7 @@ Use querying to receive name suggestions for your scripts/tools, for example:
 Files that can't be renamed (are not PKGs, are broken, etc.) and directories are returned unchanged.  
 A successful query returns exit code 0. On error, the list is incomplete and a non-zero value is returned to indicate failure.
 
-#### How to compile...
+## How to compile...
 
 ...for Linux/Unix (requires libcurl development files):
 
@@ -219,7 +202,7 @@ Or download a compiled Windows release at https://github.com/hippie68/pkgrename/
 
 Please report bugs, make feature requests, or add missing data at https://github.com/hippie68/pkgrename/issues.
 
-### For Windows users:
+# For Windows users
 
 On Windows 10/11, it is **strongly recommended** to activate the UTF-8 beta feature: Settings - Time & Language - Language - Administrative language settings - Change system locale... - Beta: Use Unicode UTF-8 for worldwide language support.  
 For Windows 10 users it is recommended to use the new Windows Terminal application (which is now the default terminal in Windows 11) instead of the standard cmd.exe command prompt.
@@ -231,7 +214,7 @@ If the UTF-8 beta feature is not used, file names that contain multibyte charact
 
 Such a PKG file can't be renamed then and will be skipped.
 
-#### How to run pkgrename.exe from anywhere with modified arguments:
+## How to run pkgrename.exe from anywhere with modified arguments
 
 Put pkgrename.exe in a folder (you can also put other command line programs there).
 Inside that folder, create a new batch file named "pkgrename.bat" and open it with Notepad.
