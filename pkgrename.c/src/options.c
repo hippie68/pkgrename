@@ -1,6 +1,6 @@
 #include "../include/common.h"
 #include "../include/colors.h"
-#include "../include/getopts.h"
+#include "../include/getopt.h"
 #include "../include/options.h"
 
 #include <stdio.h>
@@ -15,14 +15,53 @@ int option_no_placeholder;
 int option_no_to_all;
 int option_leading_zeros;
 int option_online;
+int option_query;
 int option_recursive;
 int option_underscores;
 int option_verbose;
 int option_yes_to_all;
 
+enum long_only_options {
+    OPT_DISABLE_COLORS = 256,
+    OPT_NO_PLACEHOLDER,
+    OPT_PLACEHOLDER,
+    OPT_PRINT_TAGS,
+    OPT_SET_TYPE,
+    OPT_TAGFILE,
+    OPT_TAGS,
+    OPT_VERSION,
+};
+
+static struct option opts[] = {
+    { 'c',                "compact",        NULL,      "Hide files that are already renamed." },
+#ifndef _WIN32
+    { OPT_DISABLE_COLORS, "disable-colors", NULL,      "Disable colored text output." },
+#endif
+    { 'f',                "force",          NULL,      "Force-prompt even when file names match." },
+    { 'h',                "help",           NULL,      "Print this help screen." },
+    { '0',                "leading-zeros",  NULL,      "Show leading zeros in pattern variables %app_ver%, %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%." },
+    { 'm',                "mixed-case",     NULL,      "Automatically apply mixed-case letter style." },
+    { OPT_NO_PLACEHOLDER, "no-placeholder", NULL,      "Hide characters instead of using placeholders." },
+    { 'n',                "no-to-all",      NULL,      "Do not prompt; do not actually rename any files. This can be used to do a test run." },
+    { 'o',                "online",         NULL,      "Automatically search online for %title%." },
+    { 'p',                "pattern",        "PATTERN", "Set the file name pattern to string PATTERN." },
+    { OPT_PLACEHOLDER,    "placeholder",    "X",       "Set the placeholder character to X." },
+    { OPT_PRINT_TAGS,     "print-tags",     NULL,      "Print all built-in release tags." },
+    { 'q',                "query",          NULL,      "For scripts/tools: print file name suggestions, one per line, without renaming the files. A successful query returns exit code 0." },
+    { 'r',                "recursive",      NULL,      "Traverse subdirectories recursively." },
+    { OPT_SET_TYPE,       "set-type",       "CATEGORIES", "Set %type% mapping to comma-separated string CATEGORIES (see section \"Pattern variables\")." },
+    { OPT_TAGFILE,        "tagfile",        "FILE",    "Load additional %release% tags from text file FILE, one tag per line." },
+    { OPT_TAGS,           "tags",           "TAGS",    "Load additional %release% tags from comma-separated string TAGS (no spaces before or after commas)." },
+    { 'u',                "underscores",    NULL,      "Use underscores instead of spaces in file names." },
+    { 'v',                "verbose",        NULL,      "Display additional infos." },
+    { OPT_VERSION,        "version",        NULL,      "Print the current pkgrename version." },
+    { 'y',                "yes-to-all",     NULL,      "Do not prompt; rename all files automatically." },
+    { 0 }
+};
+
 void print_version(void)
 {
-    printf("Version 1.07, build date: %s\n", __DATE__);
+    printf("Version 1.07a, build date: %s\n", __DATE__);
     printf("Get the latest version at "
         "\"%s\".\n", HOMEPAGE_LINK);
     printf("Report bugs, request features, or add missing tags at "
@@ -53,7 +92,7 @@ void print_prompt_help(void) {
 
 void print_usage(void) {
     fputs(
-        "Usage: pkgrename [options] [file|directory ...]\n"
+        "Usage: pkgrename [OPTIONS] [FILE|DIRECTORY ...]\n"
         "\n"
         "Renames PS4 PKGs to match a file name pattern. The default pattern is:\n"
         "\"%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]\"\n"
@@ -130,57 +169,12 @@ void print_usage(void) {
         "-------------------\n"
         , stdout);
     print_prompt_help();
-    fputs(
-        "\nOptions:\n"
-        "--------\n"
-        "  -c, --compact         Hide files that are already renamed.\n"
-#ifndef _WIN32
-        "      --disable-colors  Disable colored text output.\n"
-#endif
-        "  -f, --force           Force-prompt even if file names match.\n"
-        "  -h, --help            Print this help screen.\n"
-        "  -0, --leading-zeros   Show leading zeros in pattern variables %app_ver%,\n"
-        "                        %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%.\n"
-        "  -m, --mixed-case      Automatically apply mixed-case letter style.\n"
-        "      --no-placeholder  Hide characters instead of using placeholders.\n"
-        "  -n, --no-to-all       Do not prompt; do not actually rename any files.\n"
-        "                        This can be used to do a test run.\n"
-        "  -o, --online          Automatically search online for %title%.\n"
-        "  -p, --pattern x       Set the file name pattern to string x.\n"
-        "      --placeholder x   Set the placeholder character to x.\n"
-        "      --print-tags      Print all built-in release tags.\n"
-        "  -r, --recursive       Traverse subdirectories recursively.\n"
-        "      --set-type x      Set %type% mapping to 5 comma-separated strings x.\n"
-        "      --tagfile x       Load additional %release% tags from text file x, one\n"
-        "                        tag per line.\n"
-        "      --tags x          Load additional %release% tags from comma-separated\n"
-        "                        string x (no spaces before or after commas).\n"
-        "  -u, --underscores     Use underscores instead of spaces in file names.\n"
-        "  -v, --verbose         Display additional infos.\n"
-        "      --version         Print the current pkgrename version.\n"
-        "  -y, --yes-to-all      Do not prompt; rename all files automatically.\n"
-        , stdout);
+    fputs("\nOptions:\n"
+            "--------\n", stdout);
+    print_options(stdout, opts);
 }
 
 // Option functions ------------------------------------------------------------
-
-static inline void optf_compact() { option_compact = 1; }
-#ifndef _WIN32
-static inline void optf_disable_colors() {option_disable_colors = 1; }
-#endif
-static inline void optf_force() { option_force = 1; }
-
-static inline void optf_help()
-{
-    print_usage();
-    exit(EXIT_SUCCESS);
-}
-
-static inline void optf_leading_zeros() { option_leading_zeros = 1; }
-static inline void optf_mixed_case() { option_mixed_case = 1; }
-static inline void optf_no_placeholder() { option_no_placeholder = 1; }
-static inline void optf_no_to_all() { option_no_to_all = 1; }
-static inline void optf_online() { option_online = 1; }
 
 static inline void optf_pattern(char *pattern)
 {
@@ -198,20 +192,6 @@ static inline void optf_pattern(char *pattern)
     }
     strcpy(format_string, pattern);
 }
-
-static inline void optf_placeholder(char *placeholder)
-{
-    placeholder_char = placeholder[0];
-}
-
-static inline void optf_print_database()
-{
-    extern void print_database();
-    print_database();
-    exit(EXIT_SUCCESS);
-}
-
-static inline void optf_recursive() { option_recursive = 1; }
 
 static inline void optf_set_type(char *argument)
 {
@@ -263,6 +243,7 @@ static inline void optf_tagfile(char *file_name)
         memcpy(tags[tagc], buf, strlen(buf) + 1);
         tagc++;
     }
+
     fclose(tagfile);
 }
 
@@ -277,48 +258,83 @@ static inline void optf_tags(char *taglist)
     }
 }
 
-static inline void optf_underscores() { option_underscores = 1; }
-static inline void optf_verbose() { option_verbose = 1; }
-
-static inline void optf_version()
-{
-    print_version();
-    exit(EXIT_SUCCESS);
-}
-
-static inline void optf_yes_to_all() { option_yes_to_all = 1; }
-
 // -----------------------------------------------------------------------------
 
-void parse_options(int argc, char *argv[]) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-    struct OPTION options[] = {
-        {'c', "compact",        0, optf_compact},
+void parse_options(int *argc, char **argv[])
+{
+    int opt;
+    char *optarg;
+    while ((opt = getopt(argc, argv, &optarg, opts)) != 0) {
+        switch (opt) {
+            case 'c':
+                option_compact = 1;
+                break;
 #ifndef _WIN32
-        {0,   "disable-colors", 0, optf_disable_colors},
+            case OPT_DISABLE_COLORS:
+                option_disable_colors = 1;
+                break;
 #endif
-        {'f', "force",          0, optf_force},
-        {'h', "help",           0, optf_help},
-        {'0', "leading-zeros",  0, optf_leading_zeros},
-        {'m', "mixed-case",     0, optf_mixed_case},
-        {'n', "no-to-all",      0, optf_no_to_all},
-        {0,   "no-placeholder", 0, optf_no_placeholder},
-        {'o', "online",         0, optf_online},
-        {'p', "pattern",        1, optf_pattern},
-        {0,   "placeholder",    1, optf_placeholder},
-        {0,   "print-database", 0, optf_print_database},
-        {'r', "recursive",      0, optf_recursive},
-        {0,   "set-type",       1, optf_set_type},
-        {0,   "tagfile",        1, optf_tagfile},
-        {0,   "tags",           1, optf_tags},
-        {'u', "underscores",    0, optf_underscores},
-        {'v', "verbose",        0, optf_verbose},
-        {0,   "version",        0, optf_version},
-        {0,   "yes-to-all",     0, optf_yes_to_all},
-        {EOF}
-    };
-#pragma GCC diagnostic pop
-    if (get_opts(argc, argv, options) != 0)
-        exit(1);
+            case 'f':
+                option_force = 1;
+                break;
+            case 'h':
+                print_usage();
+                exit(EXIT_SUCCESS);
+            case '0':
+                option_leading_zeros = 1;
+                break;
+            case 'm':
+                option_mixed_case = 1;
+                break;
+            case OPT_NO_PLACEHOLDER:
+                option_no_placeholder = 1;
+                break;
+            case 'n':
+                option_no_to_all = 1;
+                break;
+            case 'o':
+                option_online = 1;
+                break;
+            case 'p':
+                optf_pattern(optarg);
+                break;
+            case OPT_PLACEHOLDER:
+                placeholder_char = optarg[0];
+                break;
+            case OPT_PRINT_TAGS:
+                ;
+                extern void print_database();
+                print_database();
+                exit(EXIT_SUCCESS);
+            case 'q':
+                option_query = 1;
+                break;
+            case 'r':
+                option_recursive = 1;
+                break;
+            case OPT_SET_TYPE:
+                optf_set_type(optarg);
+                break;
+            case OPT_TAGFILE:
+                optf_tagfile(optarg);
+                break;
+            case OPT_TAGS:
+                optf_tags(optarg);
+                break;
+            case 'u':
+                option_underscores = 1;
+                break;
+            case 'v':
+                option_verbose = 1;
+                break;
+            case OPT_VERSION:
+                print_version();
+                exit(EXIT_SUCCESS);
+            case 'y':
+                option_yes_to_all = 1;
+                break;
+            default:
+                exit(EXIT_FAILURE);
+        }
+    }
 }

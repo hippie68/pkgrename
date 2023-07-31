@@ -7,7 +7,6 @@
 #include "include/characters.h"
 #include "include/colors.h"
 #include "include/common.h"
-#include "include/getopts.h"
 #include "include/onlinesearch.h"
 #include "include/options.h"
 #include "include/pkg.h"
@@ -42,30 +41,7 @@ struct custom_category custom_category =
     {"Game", "Update", "DLC", "App", "Other"};
 char *tags[MAX_TAGS];
 int tagc;
-struct scan_result *scan_backup; // Stores a scan result for the space hotkey.
-
-// Debug function that prints the linked list's contents.
-void print_linked_list(void)
-{
-    //pthread_mutex_lock(&mutex);
-    fputs("\nLinked list filenames:\n", stderr);
-    size_t i = 1;
-    struct scan_result *scan = first_scan;
-    while (scan && scan != END_OF_SCAN) {
-        fprintf(stderr, "%04zu; %p%s:\n", i, (void *) scan, scan == first_scan ? " (first_scan)" : scan == last_scan ? " (last_scan)" : "");
-        fprintf(stderr, ".filename: %s\n", scan->filename);
-        fprintf(stderr, ".filename_is_allocated: %d\n", scan->filename_is_allocated);
-        fprintf(stderr, ".param_sfo: %s\n", scan->param_sfo ? "set" : "NULL");
-        fprintf(stderr, ".changelog: %s\n", scan->changelog ? "set" : "NULL");
-        fprintf(stderr, ".next: %s\n", scan->next == NULL ? "NULL" : scan->next == last_scan ? "last_scan" : scan->next == END_OF_SCAN ? "END_OF_SCAN" : "set");
-        fprintf(stderr, ".next: %p\n", (void *) scan->next);
-        fprintf(stderr, ".prev: %s\n", scan->prev ? "set" : "NULL");
-        fprintf(stderr, ".prev: %p\n", (void *) scan->prev);
-        scan = scan->next;
-        ++i;
-    }
-    //pthread_mutex_unlock(&mutex);
-}
+static int option_force_backup;
 
 static void rename_file(char *filename, char *new_basename, char *path)
 {
@@ -120,20 +96,24 @@ static ssize_t get_file_size(const char *filename)
 
 // Uses information retreived by a previous scan to rename a PS4 PKG file.
 // The .next member may not be accessed without a mutex lock.
-// Return value:
-//   -1 if the scan result must be deleted.
-//    1 if the user has requested to go back to the previous scan result.
-//    2 if the user has requested to return to the current scan result.
-//    0 otherwise.
-static int pkgrename(struct scan_result *scan)
+// Returns NULL or a pointer to a scan it needs to be called again with.
+static struct scan *pkgrename(struct scan *scan)
 {
     static int first_run = 1; // Used to decide when to print newlines.
-
-    // Don't proceed if the scan was aborted due to an error.
+    static struct scan *scan_backup; // Used to return to current scan (space).
     static int error_streak = 0;
+
+    // Don't proceed if the scan describes an error.
     if (scan->error) {
+        if (option_query == 1) {
+            // Ignore error and print the original file name.
+            printf("%s\n", scan->filename);
+            return NULL;
+        }
+
         // Make sure to print consecutive errors as a block.
         if (error_streak == 0) {
+            error_streak = 1;
             if (first_run == 1)
                 first_run = 0;
             else
@@ -141,21 +121,25 @@ static int pkgrename(struct scan_result *scan)
         }
 
         print_scan_error(scan);
-        //delete_scan_result(scan);
-        error_streak = 1;
-        return -1;
+
+        // Mark error scan as seen so that it won't be displayed again.
+        if (scan->filename_allocated)
+            free(scan->filename);
+        scan->filename = NULL;
+
+        return NULL;
     } else {
         error_streak = 0;
     }
 
-    if (option_compact == 0) {
+    if (option_query == 0 && option_compact == 0) {
         if (first_run == 1)
             first_run = 0;
         else
             putchar('\n');
     }
 
-    char new_basename[MAX_FILENAME_LEN]; // Used to build the new PKG filename.
+    char new_basename[MAX_FORMAT_STRING_LEN]; // Used to build the new filename.
     char *filename = scan->filename;
     char *basename; // "filename" without path.
     char lowercase_basename[MAX_FILENAME_LEN];
@@ -215,11 +199,9 @@ static int pkgrename(struct scan_result *scan)
     // Print directory if it's different (early).
     if (option_compact == 0) {
         if (old_path && strcmp(path, old_path) != 0) {
-            if (option_disable_colors == 0)
-                fputs(GRAY, stdout);
-            printf("Current directory: %s\n\n", path);
-            if (option_disable_colors == 0)
-                fputs(RESET, stdout);
+            set_color(GRAY, stderr);
+            fprintf(stderr, "Current directory: %s\n\n", path);
+            set_color(RESET, stderr);
         }
         free(old_path);
         old_path = path;
@@ -231,7 +213,7 @@ static int pkgrename(struct scan_result *scan)
         lowercase_basename[i] = tolower(lowercase_basename[i]);
 
     // Print current basename (early).
-    if (option_compact == 0)
+    if (option_query == 0 && option_compact == 0)
         printf("   \"%s\"\n", basename);
 
     // Load PKG data.
@@ -381,7 +363,8 @@ static int pkgrename(struct scan_result *scan)
         ***********************************************************************/
 
         // Replace pattern variables.
-        strcpy(new_basename, format_string);
+        strncpy(new_basename, format_string, sizeof(new_basename) - 1);
+        new_basename[sizeof(new_basename) - 1] = '\0';
         // Types first, as they may contain other pattern variables.
         strreplace(new_basename, "%type%", type);
         strreplace(new_basename, "%app%", app);
@@ -450,18 +433,21 @@ static int pkgrename(struct scan_result *scan)
         // Remove leading whitespace.
         char *p;
         p = new_basename;
-        while (isspace(p[0])) p++;
+        while (isspace(p[0]))
+            p++;
         memmove(new_basename, p, MAX_FILENAME_LEN);
 
         // Remove trailing whitespace.
         p = new_basename + strlen(new_basename) - 1;
-        while (isspace(p[0])) p[0] = '\0';
+        while (isspace(p[0]))
+            p[0] = '\0';
 
         // Option --underscores: replace all whitespace with underscores.
         if (option_underscores == 1) {
             p = new_basename;
             while (*p != '\0') {
-                if (isspace(*p)) *p = '_';
+                if (isspace(*p))
+                    *p = '_';
                 p++;
             }
         }
@@ -471,7 +457,7 @@ static int pkgrename(struct scan_result *scan)
         /**********************************************************************/
 
         // Print current basename (late).
-        if (option_compact == 1 && first_loop == 1) {
+        if (option_query == 0 && option_compact == 1 && first_loop == 1) {
             if (option_force == 0 && strcmp(basename, new_basename) == 0) {
                 goto exit;
             } else {
@@ -492,35 +478,39 @@ static int pkgrename(struct scan_result *scan)
         }
 
         // Print new basename.
+        if (option_query == 1) {
+            printf("%s\n", new_basename);
+            return NULL;
+        }
         printf("=> \"%s\"", new_basename);
 
         // Print number of special characters.
         if (option_verbose) {
-            if (option_disable_colors == 0)
-                fputs(BRIGHT_YELLOW, stdout);
+            set_color(BRIGHT_YELLOW, stdout);
             printf(" (%d/%d)", spec_chars_current, spec_chars_total);
-            if (option_disable_colors == 0)
-                fputs(RESET, stdout);
+            set_color(RESET, stdout);
         } else if (spec_chars_current) {
-            if (option_disable_colors == 0)
-                fputs(BRIGHT_YELLOW, stdout);
+            set_color(BRIGHT_YELLOW, stdout);
             printf(" (%d)", spec_chars_current);
-            if (option_disable_colors == 0)
-                fputs(RESET, stdout);
+            set_color(RESET, stdout);
         }
         putchar('\n');
 
-        // Exit if new basename too long.
+        // Warn if new basename too long.
         if (strlen(new_basename) > MAX_FILENAME_LEN - 1) {
+            set_color(YELLOW, stderr);
+            fprintf(stderr,
+                "Warning: new filename too long for exFAT partitions (%"
 #ifdef _WIN64
-            fprintf(stderr, "New filename too long (%llu/%d) characters).\n",
+                "llu"
 #elif defined(_WIN32)
-            fprintf(stderr, "New filename too long (%u/%d) characters).\n",
+                "u"
 #else
-            fprintf(stderr, "New filename too long (%lu/%d) characters).\n",
+                "lu"
 #endif
-            strlen(new_basename) + 4, MAX_FILENAME_LEN - 1);
-            exit(EXIT_FAILURE);
+                "/%d characters).\n",
+                strlen(new_basename) + 4, MAX_FILENAME_LEN - 1); // + 4: ".pkg"
+            set_color(RESET, stderr);
         }
 
         // Option -n: don't do anything else.
@@ -560,22 +550,35 @@ static int pkgrename(struct scan_result *scan)
             c = getchar();
 #endif
 
-            // Return to previous file if backspace was pressed.
+            // Try to go back to the previous scan if backspace was pressed.
 #ifdef _WIN32
-            if (c == 8 && scan->prev != NULL) {
+            if (c == 8) {
 #else
-            if (c == 127 && scan->prev != NULL) {
+            if (c == 127) {
 #endif
+                // Find the previous non-error scan.
+                struct scan *prev = scan->prev;
+                while (prev && prev->error)
+                    prev = prev->prev;
+                if (prev == NULL)
+                    continue;
+
+                // Go back.
+                if (scan_backup == NULL)
+                    scan_backup = scan;
+                option_force = 1;
                 putchar('\n');
-                return 1;
+                return prev;
             }
 
-            // Return to current file if space was pressed.
+            // Return to the current scan if space was pressed.
             if (c == 32 && scan_backup != NULL) {
+                scan = scan_backup;
+                scan_backup = NULL;
+                option_force = option_force_backup;
                 putchar('\n');
-                return 2;
+                return scan;
             }
-
         } while (strchr("ynaetmorcshqblp", c) == NULL);
         printf("%c\n", c);
 
@@ -676,11 +679,9 @@ static int pkgrename(struct scan_result *scan)
                         printf("%c", title[i]);
                     } else {
                         count++;
-                        if (option_disable_colors == 0)
-                            fputs(BRIGHT_YELLOW, stdout);
+                        set_color(BRIGHT_YELLOW, stdout);
                         printf("#%u", (unsigned char) title[i]);
-                        if (option_disable_colors == 0)
-                            fputs(RESET, stdout);
+                        set_color(RESET, stdout);
                     }
                 }
                 printf("\"\n%d special character%c found.\n\n", count,
@@ -743,117 +744,99 @@ static int pkgrename(struct scan_result *scan)
     }
 
 exit:
-    return 0;
+    return NULL;
 }
 
 // Background thread that scans PS4 PKG files for data required for renaming.
-// The data is stored in a global linked list.
 static void *scan_files(void *param)
 {
-    (void) param;
+    struct scan_job *job = (struct scan_job *) param;
 
-    if (noptc == 0) { // Use current directory.
-        if (parse_directory("."))
-            return NULL;
+    if (job->n_filenames == 0) { // Use current directory.
+        if (option_query == 1)
+            goto done;
+        if (parse_directory(".", job))
+            exit(EXIT_FAILURE);
     } else { // Find PKGs and run pkgrename() on them.
         DIR *dir;
-        for (int i = 0; i < noptc; i++) {
+        for (int i = 0; i < job->n_filenames; i++) {
             // Directory
-            if ((dir = opendir(nopts[i])) != NULL) {
+            if ((dir = opendir(job->filenames[i])) != NULL) {
                 closedir(dir);
-                if (parse_directory(nopts[i]))
-                    return NULL;
+                if (option_query == 1) {
+                    puts(job->filenames[i]);
+                    continue;
+                }
+                if (parse_directory(job->filenames[i], job))
+                    exit(EXIT_FAILURE);
             // File
             } else {
-                struct scan_result *scan = scan_file(nopts[i], 0);
-                if (scan)
-                    add_scan_result(scan);
+                add_scan_result(job, job->filenames[i], 0);
             }
         }
     }
 
+done:
+    ;
     int err;
 
-    if ((err = pthread_mutex_lock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
-    if (last_scan)
-        last_scan->next = END_OF_SCAN;
-    if ((err = pthread_mutex_unlock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
+    if ((err = pthread_mutex_lock(&job->mutex)) != 0)
+        goto error;
+    job->scan_list.finished = 1;
+    if ((err = pthread_mutex_unlock(&job->mutex)) != 0)
+        goto error;
 
-    if ((err = pthread_cond_signal(&new_file_ready)) != 0)
-        exit_err(err, __func__, __LINE__);
+    if ((err = pthread_cond_signal(&job->cond)) != 0)
+        goto error;
 
     return NULL;
+
+error:
+     exit_err(err, __func__, __LINE__);
 }
 
 // Runs pkgrename() on scan results as they become available.
-static void parse_scan_results(void)
+static void parse_scan_results(struct scan_job *job)
 {
-    int err;
+    struct scan *scan, *known_tail;
 
-start:
-    if ((err = pthread_mutex_lock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
-    if ((err = pthread_cond_wait(&new_file_ready, &mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
-    if ((err = pthread_mutex_unlock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
+    // Wait until the list has at least 1 node.
+    pthread_mutex_lock(&job->mutex);
+    while (job->scan_list.head == NULL && job->scan_list.finished == 0)
+        pthread_cond_wait(&job->cond, &job->mutex);
+    known_tail = job->scan_list.tail; // Store tail to skip mutex locks below.
+    scan = job->scan_list.head;
+    pthread_mutex_unlock(&job->mutex);
 
-    struct scan_result *scan = first_scan;
-    if (scan == NULL || scan == END_OF_SCAN)
+    if (scan == NULL) // Scan finished without adding scans.
         return;
 
-    int option_force_backup = option_force;
+
     while (1) {
-        // Reset scan_backup if it's reached again without pressing space.
-        if (scan == scan_backup)
-            scan_backup = NULL;
+        // Skip previously seen error scans.
+        if (scan->filename == NULL)
+            goto next;
 
-        int ret = pkgrename(scan);
+        while (1) {
+            struct scan *ret = pkgrename(scan);
+            if (ret == NULL)
+                break;
+            scan = ret;
+        } // Call pkgrename() as long as requested.
 
-        // Go back to the previous scan result if requested.
-        if (ret == 1) {
-            if (scan_backup == NULL)
-                scan_backup = scan;
-            scan = scan->prev; // pkgrename() made sure it's not NULL.
-            option_force = 1;
-            continue;
+next:
+        // Wait until a new scan becomes available.
+        if (scan == known_tail) {
+            pthread_mutex_lock(&job->mutex);
+            while (scan->next == NULL && job->scan_list.finished == 0)
+                pthread_cond_wait(&job->cond, &job->mutex);
+            known_tail = job->scan_list.tail;
+            pthread_mutex_unlock(&job->mutex);
+            if (scan->next == NULL) // Scanning finished.
+                return;
         }
 
-        // Return to the current scan result if requested.
-        if (ret == 2) {
-            scan = scan_backup;
-            scan_backup = NULL;
-            option_force = option_force_backup;
-            continue;
-        }
-
-        // Delete the current node due to file error.
-        if (ret == -1) {
-            struct scan_result *prev_scan = scan->prev;
-            delete_scan_result(scan);
-            if (prev_scan == NULL)
-                goto start;
-            else
-                scan = prev_scan;
-        }
-
-        // Proceed with the next scan result...
-        if ((err = pthread_mutex_lock(&mutex)) != 0)
-            exit_err(err, __func__, __LINE__);
-        if (scan->next == NULL) {
-            if ((err = pthread_cond_wait(&new_file_ready, &mutex)) != 0)
-                exit_err(err, __func__, __LINE__);
-        }
-        if (scan->next == END_OF_SCAN) { // ...until there are no results left.
-            if ((err = pthread_mutex_unlock(&mutex)) != 0)
-                exit_err(err, __func__, __LINE__);
-            return;
-        }
         scan = scan->next;
-        if ((err = pthread_mutex_unlock(&mutex)) != 0)
-            exit_err(err, __func__, __LINE__);
     }
 }
 
@@ -868,19 +851,25 @@ int main(int argc, char *argv[])
         option_disable_colors = 1;
 #endif
 
-    parse_options(argc, argv);
+    parse_options(&argc, &argv);
+
+    struct scan_job job;
+    if (initialize_scan_job(&job, argv, argc))
+        exit(EXIT_FAILURE);
 
     // Run file scans in a separate thread.
     pthread_t file_thread;
     int err;
-    if ((err = pthread_create(&file_thread, NULL, scan_files, NULL)) != 0)
-        exit_err(err, __func__, __LINE__);
+    if ((err = pthread_create(&file_thread, NULL, scan_files, &job)) != 0)
+        goto error;
 
     // Parse the scan results in the main thread.
-    parse_scan_results();
+    parse_scan_results(&job);
 
-    // Debug
-    //print_linked_list();
+    destroy_scan_job(&job);
 
     exit(EXIT_SUCCESS);
+
+error:
+    exit_err(err, __func__, __LINE__);
 }

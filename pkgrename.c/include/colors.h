@@ -39,4 +39,10 @@
 #define BG_BRIGHT_CYAN "\033[0;106m"
 #define BG_BRIGHT_GRAY "\033[0;107m"
 
+#define set_color(color, stream)          \
+    do {                                  \
+        if (option_disable_colors == 0)   \
+            fputs(color, stream);         \
+    } while (0)
+
 #endif

@@ -13,122 +13,154 @@
 #include <stdlib.h>
 #include <string.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t new_file_ready = PTHREAD_COND_INITIALIZER;
-struct scan_result end_of_scan;
-struct scan_result *END_OF_SCAN = &end_of_scan;
-struct scan_result *first_scan, *last_scan;
+#define SCAN_LIST_MIN_SIZE 1024
 
-// Adds an allocated scan result to the global linked list.
-void add_scan_result(struct scan_result *scan)
+#ifdef DEBUG
+// Debug function.
+void print_scan(struct scan *scan)
 {
-    int err;
+    fprintf(stderr, "node pointer: %p\n", (void *) scan );
+    if (scan == NULL)
+        return;
+    fprintf(stderr, "filename: %s\n", scan->filename);
+    fprintf(stderr, "filename_allocated: %d\n", scan->filename_allocated);
+    fprintf(stderr, "prev: %p\n", (void *) scan->prev);
+    fprintf(stderr, "next: %p\n", (void *) scan->next);
+}
+#endif
 
-    if ((err = pthread_mutex_lock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
+// Companion function for initialize_scan_job().
+// Returns 0 on success and -1 on error.
+static inline int initialize_scan_list(struct scan_list *list)
+{
+    list->tail = calloc(1, SCAN_LIST_CHUNK_SIZE * sizeof(struct scan));
+    if (list->tail == NULL)
+        return -1;
 
-    if (first_scan == NULL) { // Also means last_scan == NULL.
-        scan->prev = NULL;
-        scan->next = NULL;
-        first_scan = scan;
-        last_scan = scan;
-    } else {
-        last_scan->next = scan;
-        scan->prev = last_scan;
-        scan->next = NULL;
-        last_scan = scan;
+    list->head = NULL;
+    list->finished = 0;
+    list->n_slots = SCAN_LIST_CHUNK_SIZE;
+
+    return 0;
+}
+
+// Initializes a scan job.
+// Returns 0 on success and -1 on error.
+int initialize_scan_job(struct scan_job *job, char **filenames, int n_filenames)
+{
+    if (initialize_scan_list(&job->scan_list))
+        return -1;
+    if (pthread_mutex_init(&job->mutex, NULL))
+        return -1;
+    if (pthread_cond_init(&job->cond, NULL)) {
+        pthread_mutex_destroy(&job->mutex);
+        return -1;
     }
+    job->filenames = filenames;
+    job->n_filenames = n_filenames;
 
-    if ((err = pthread_mutex_unlock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
-    if ((err = pthread_cond_signal(&new_file_ready)) != 0)
-        exit_err(err, __func__, __LINE__);
-
-    return;
+    return 0;
 }
 
-// Deletes a single scan result from the global linked list and destroys it.
-void delete_scan_result(struct scan_result *scan)
+// Companion function for destroy_scan_list(); must not be used elsewhere.
+// Deletes a node and returns a pointer to the next node.
+static inline struct scan *delete_scan(struct scan *scan)
 {
-    int err;
-
-    if ((err = pthread_mutex_lock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
-
-    // Unlink node.
-    if (scan->next && scan->next != END_OF_SCAN)
-        scan->next->prev = scan->prev;
-    if (scan->prev)
-        scan->prev->next = scan->next;
-
-    // Delete contents.
-    if (scan->filename_is_allocated)
+    if (scan->filename_allocated && scan->filename)
         free(scan->filename);
-    free(scan->param_sfo);
-    free(scan->changelog);
-
-    // Set new head and tail.
-    if (scan == first_scan)
-        first_scan = scan->next;
-    if (scan == last_scan)
-        last_scan = scan->prev;
-
-    // Delete node.
-    free(scan);
-
-    if ((err = pthread_mutex_unlock(&mutex)) != 0)
-        exit_err(err, __func__, __LINE__);
-}
-
-// Destroys all scan results found in the global linked list.
-// Supposed to only run after threads have terminated.
-void destroy_scan_results(void)
-{
-    struct scan_result *scan = first_scan;
-
-    while (scan != NULL && scan != END_OF_SCAN) {
-        if (scan->filename_is_allocated)
-            free(scan->filename);
+    if (scan->param_sfo)
         free(scan->param_sfo);
+    if (scan->changelog)
         free(scan->changelog);
 
-        if (scan->next == NULL || scan->next == END_OF_SCAN) {
-            scan = scan->next;
-            free(scan->prev);
-        } else {
-            free(scan);
-            break;
+    if (scan->next)
+        return scan->next;
+    else
+        return NULL;
+}
+
+// Companion function for destroy_scan_job() that frees a scan list's allocated
+// memory. The list must not be in use by other threads anymore.
+static inline void destroy_scan_list(struct scan_list *scan_list)
+{
+    struct scan *scan = scan_list->head;
+    if (scan == NULL)
+        return;
+
+    size_t n_nodes = 0;
+    do {
+        scan = delete_scan(scan);
+
+        n_nodes++;
+        if (n_nodes == SCAN_LIST_CHUNK_SIZE) {
+            free(scan_list->head);
+            scan_list->head = scan;
+            n_nodes = 0;
+        }
+    } while (scan);
+}
+
+// Destroys a scan job.
+void destroy_scan_job(struct scan_job *job)
+{
+    destroy_scan_list(&job->scan_list);
+    pthread_mutex_destroy(&job->mutex);
+    pthread_cond_destroy(&job->cond);
+}
+
+// Adds a scan result to a job's scan list.
+void add_scan_result(struct scan_job *job, char *filename,
+    _Bool filename_allocated)
+{
+    pthread_mutex_lock(&job->mutex);
+
+    struct scan_list *list = &job->scan_list;
+    struct scan *scan;
+
+    // Assemble new node, without linking it yet.
+    if (list->head == NULL) {
+        scan = list->tail;
+    } else {
+        if (list->n_slots > 0) { // Chunk slots left? Use next slot.
+            scan = list->tail + 1;
+        } else { // Use a new chunk.
+            scan = malloc(SCAN_LIST_CHUNK_SIZE * sizeof(struct scan));
+            if (scan == NULL)
+                exit(EXIT_FAILURE); // TODO: better error handling.
+            list->n_slots = SCAN_LIST_CHUNK_SIZE;
         }
     }
-}
+    list->n_slots--;
 
-// Scans a file for PS4 PKG content and returns the allocated scan result
-// on success or NULL on out of memory error.
-// If the file is dynamically allocated, the integer parameter must be true.
-struct scan_result *scan_file(char *filename, _Bool filename_is_allocated)
-{
-    struct scan_result *scan = malloc(sizeof *scan);
-    if (scan == NULL) {
-        fputs("Out of memory while scanning remaining files.\n", stderr);
-        return NULL;
-    }
+    pthread_mutex_unlock(&job->mutex);
+
     scan->filename = filename;
-    scan->filename_is_allocated = filename_is_allocated;
+    scan->filename_allocated = filename_allocated;
     scan->param_sfo = NULL;
     scan->changelog = NULL;
-    scan->error = load_pkg_data(&scan->param_sfo, &scan->changelog,
-        scan->filename);
-    // Note: .prev and .next are set by add_scan_result().
+    scan->error = load_pkg_data(&scan->param_sfo, &scan->changelog, filename);
+    scan->next = NULL;
 
-    return scan;
+    // Link new node.
+    pthread_mutex_lock(&job->mutex);
+    if (list->head == NULL) {
+        list->tail = scan;
+        list->head = scan;
+    } else {
+        list->tail->next = scan;
+        scan->prev = list->tail;
+        list->tail = scan;
+    }
+
+    pthread_mutex_unlock(&job->mutex);
+
+    pthread_cond_signal(&job->cond);
 }
 
-// Prints an error message that describes the integer value of struct
-// scan_result's .error member.
-void print_scan_error(struct scan_result *scan)
+// Prints a message that describes the value of struct scan's .error member.
+void print_scan_error(struct scan *scan)
 {
-    if (option_disable_colors == 0)
-        fputs(BRIGHT_RED, stderr);
+    set_color(BRIGHT_RED, stderr);
     fprintf(stderr, "Error while scanning file \"%s\": ", scan->filename);
     switch (scan->error) {
         case SCAN_ERROR_NOT_A_PKG:
@@ -161,8 +193,7 @@ void print_scan_error(struct scan_result *scan)
         default:
             fputs("Unkown error.\n", stderr);
     }
-    if (option_disable_colors == 0)
-        fputs(RESET, stderr);
+    set_color(RESET, stderr);
 }
 
 // Companion function for qsort in parse_directory().
@@ -171,7 +202,8 @@ static int qsort_compare_strings(const void *p, const void *q) {
 }
 
 // Finds all .pkg files in a directory and runs a scan on them.
-int parse_directory(char *directory_name)
+// Returns 0 on success and -1 on error.
+int parse_directory(char *directory_name, struct scan_job *job)
 {
     int retval = 0;
 
@@ -207,9 +239,11 @@ int parse_directory(char *directory_name)
         snprintf(path, sizeof(path), "%s%c%s", directory_name, DIR_SEPARATOR,
             directory_entry->d_name);
         if (stat(path, &statbuf) == -1) {
-            fprintf(stderr, "Could not read file information: \"%s\".\n", path);
-            retval = -1;
-            goto full_cleanup;
+            set_color(BRIGHT_RED, stderr);
+            fprintf(stderr, "Could not read file system information: \"%s\".\n",
+                path);
+            set_color(RESET, stderr);
+            continue;
         }
         if (S_ISDIR(statbuf.st_mode)) {
 #else
@@ -255,26 +289,18 @@ int parse_directory(char *directory_name)
         qsort_compare_strings);
     qsort(filenames, file_count, sizeof(char *), qsort_compare_strings);
 
-    // Use the lists to create new scan results.
-    for (size_t i = 0; i < file_count; i++) {
-        struct scan_result *scan;
-        if ((scan = scan_file(filenames[i], 1)) == NULL) {
-            retval = -1;
-            goto full_cleanup;
-        } else {
-            add_scan_result(scan);
-        }
-    }
+    // Use the filenames to create new scan results.
+    for (size_t i = 0; i < file_count; i++)
+        add_scan_result(job, filenames[i], 1);
 
     // Parse sorted directories recursively.
     if (option_recursive == 1) {
         for (size_t i = 0; i < directory_count; i++) {
-            parse_directory(directory_names[i]);
+            parse_directory(directory_names[i], job);
             free(directory_names[i]);
         }
     }
 
-full_cleanup:
     closedir(dir);
 
 cleanup:

@@ -92,14 +92,12 @@ void search_online(char *content_id, char *title, int silent)
                 title[MAX_FILENAME_LEN - 1] = '\0';
             } else goto fail; // String is empty
         } else {
-            if (option_disable_colors == 0)
-                fputs(BRIGHT_RED, stderr);
+            set_color(BRIGHT_RED, stderr);
             fprintf(stderr,
                 "Error while searching online. Please contact the developer at"
                 " \"https://github.com/hippie68/pkgrename/issues\""
                 " and show him this link: \"%s\".\n", url);
-            if (option_disable_colors == 0)
-                fputs(RESET, stderr);
+            set_color(RESET, stderr);
         }
     } else {
 fail:
@@ -171,14 +169,12 @@ void search_online(char *content_id, char *title, int silent)
                 title[MAX_FILENAME_LEN - 1] = '\0';
             } else goto fail; // String is empty
         } else {
-            if (option_disable_colors == 0)
-                fputs(BRIGHT_RED, stderr);
+            set_color(BRIGHT_RED, stderr);
             fprintf(stderr,
                 "Error while searching online. Please contact the developer at"
                 " \"https://github.com/hippie68/pkgrename/issues\""
                 " and show him this link: \"%s\".\n", url);
-            if (option_disable_colors == 0)
-                fputs(RESET, stderr);
+            set_color(RESET, stderr);
         }
     } else {
 fail:

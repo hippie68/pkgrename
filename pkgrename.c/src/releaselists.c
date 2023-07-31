@@ -193,15 +193,13 @@ void print_changelog_tags(const char *changelog_buf)
             if (first_match == 0) {
                 fputs("Release tags found:\n", stdout);
                 first_match = 1;
-                if (option_disable_colors == 0)
-                    fputs(BRIGHT_YELLOW, stdout);
+                set_color(BRIGHT_YELLOW, stdout);
             }
             puts(p->name);
         }
         p++;
     }
-    if (option_disable_colors == 0)
-        fputs(RESET, stdout);
+    set_color(RESET, stdout);
 }
 
 // Prints a list of all known release groups and releases.

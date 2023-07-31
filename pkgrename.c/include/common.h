@@ -32,6 +32,7 @@ extern char placeholder_char;
 extern char *tags[MAX_TAGS];
 extern int tagc;
 
-void exit_err(int err, const char *function_name, int line);
+void exit_err(int err, const char *function_name, int line)
+    __attribute__ ((noreturn));
 
 #endif
