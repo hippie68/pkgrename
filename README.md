@@ -11,7 +11,7 @@ The program in action looks like this:
 
 The program's help screen ("pkgrename --help"):
 
-    Usage: pkgrename [options] [file|directory ...]
+    Usage: pkgrename [OPTIONS] [FILE|DIRECTORY ...]
     
     Renames PS4 PKGs to match a file name pattern. The default pattern is:
     "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
@@ -106,6 +106,39 @@ The program's help screen ("pkgrename --help"):
     
     Options:
     --------
+      -c, --compact              Hide files that are already renamed.
+          --disable-colors       Disable colored text output.
+      -f, --force                Force-prompt even when file names match.
+      -h, --help                 Print this help screen.
+      -0, --leading-zeros        Show leading zeros in pattern variables %app_ver%,
+                                 %firmware%, %merged_ver%, %sdk%, %true_ver%,
+                                 %version%.
+      -m, --mixed-case           Automatically apply mixed-case letter style.
+          --no-placeholder       Hide characters instead of using placeholders.
+      -n, --no-to-all            Do not prompt; do not actually rename any files.
+                                 This can be used to do a test run.
+      -o, --online               Automatically search online for %title%.
+      -p, --pattern PATTERN      Set the file name pattern to string PATTERN.
+          --placeholder X        Set the placeholder character to X.
+          --print-tags           Print all built-in release tags.
+      -q, --query                For scripts/tools: print file name suggestions, one
+                                 per line, without renaming the files. A successful
+                                 query returns exit code 0.
+      -r, --recursive            Traverse subdirectories recursively.
+          --set-type CATEGORIES  Set %type% mapping to comma-separated string
+                                 CATEGORIES (see section "Pattern variables").
+          --tagfile FILE         Load additional %release% tags from text file FILE,
+                                 one tag per line.
+          --tags TAGS            Load additional %release% tags from comma-separated
+                                 string TAGS (no spaces before or after commas).
+      -u, --underscores          Use underscores instead of spaces in file names.
+      -v, --verbose              Display additional infos.
+          --version              Print the current pkgrename version.
+      -y, --yes-to-all           Do not prompt; rename all files automatically.
+
+    
+    Options:
+    --------
       -c, --compact         Hide files that are already renamed.
           --disable-colors  Disable colored text output.
       -f, --force           Force-prompt even if file names match.
@@ -137,14 +170,14 @@ You can organize your PKGs by tagging them:
 
        "unnamed.pkg"
     => "Assassin's Creed Valhalla [v1.00] [CUSA18534].pkg"
-    [Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: t
+    [Y/N/A] [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [L]og [H]elp [Q]uit: t
 
     Enter new tag: dup  [DUPLEX]
 
 Pressing Enter at this point will use word completion to apply the suggested value:
 
     => "Assassin's Creed Valhalla [v1.00] [CUSA18534] [DUPLEX].pkg"
-    [Y/N] [A]ll [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [H]elp [Q]uit: 
+    [Y/N/A] [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [L]og [H]elp [Q]uit: 
 
 The next time pkgrename is run on this file, it will recognize and preserve the tag.
 You can add your own tag values, by using options --tags and/or --tagfile:
@@ -157,6 +190,20 @@ If you use a text file, each line must contain a single tag:
     user500
     Umbrella Corp.
     john_wayne
+
+#### Querying
+Use querying to receive name suggestions for your scripts/tools, for example:
+
+    $ pkgrename -p '%title% [%true_ver%]' --query ps4.pkg ps3.pkg flower.gif subdirectory/
+    Super Mario Bros [v1.00].pkg
+    ps3.pkg
+    flower.gif
+    subdirectory/
+    $ echo $?
+    0
+
+Files that can't be renamed (are not PKGs, are broken, etc.) and directories are returned unchanged.  
+A successful query returns exit code 0. On error, the list is incomplete and a non-zero value is returned to indicate failure.
 
 #### How to compile...
 
@@ -175,8 +222,14 @@ Please report bugs, make feature requests, or add missing data at https://github
 ### For Windows users:
 
 On Windows 10/11, it is **strongly recommended** to activate the UTF-8 beta feature: Settings - Time & Language - Language - Administrative language settings - Change system locale... - Beta: Use Unicode UTF-8 for worldwide language support.  
-For Windows 10 users it is recommended to use the new Windows Terminal application (which is now the default terminal in Windows 11) instead of the standard cmd.exe command prompt.  
+For Windows 10 users it is recommended to use the new Windows Terminal application (which is now the default terminal in Windows 11) instead of the standard cmd.exe command prompt.
 When using both the UTF-8 beta feature and Windows Terminal, pkgrename should work as intended.
+
+If the UTF-8 beta feature is not used, file names that contain multibyte characters may cause this error:
+
+    Could not read file system information: "weird_characters_????.pkg".
+
+Such a PKG file can't be renamed then and will be skipped.
 
 #### How to run pkgrename.exe from anywhere with modified arguments:
 
