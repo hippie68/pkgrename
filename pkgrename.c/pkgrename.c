@@ -158,6 +158,7 @@ static struct scan *pkgrename(struct scan *scan)
     char *category = NULL;
     char *content_id = NULL;
     char *dlc = NULL;
+    char file_id_suffix[13] = "-A0000-V0000";
     char firmware[9] = "";
     char *game = NULL;
     char true_ver_buf[5] = "";
@@ -221,6 +222,22 @@ static struct scan *pkgrename(struct scan *scan)
     char *changelog = scan->changelog;
     // APP_VER
     app_ver = (char *) get_param_sfo_value(param_sfo, "APP_VER");
+    if (app_ver && strlen(app_ver) >= 3) {
+        if (app_ver[2] == '.' && strlen(app_ver) >= 5) {
+            file_id_suffix[2] = app_ver[0];
+            file_id_suffix[3] = app_ver[1];
+            file_id_suffix[4] = app_ver[3];
+            file_id_suffix[5] = app_ver[4];
+        } else if (app_ver[1] == '.') { // Some homebrew apps got it wrong.
+            file_id_suffix[2] = '0';
+            file_id_suffix[3] = app_ver[0];
+            file_id_suffix[4] = app_ver[2];
+            if (app_ver[3])
+                file_id_suffix[5] = app_ver[3];
+            else
+                file_id_suffix[5] = '0';
+        }
+    }
     if (app_ver && option_leading_zeros == 0 && app_ver[0] == '0')
         app_ver++;
     // CATEGORY
@@ -298,6 +315,22 @@ static struct scan *pkgrename(struct scan *scan)
     title_id = (char *) get_param_sfo_value(param_sfo, "TITLE_ID");
     // VERSION
     version = (char *) get_param_sfo_value(param_sfo, "VERSION");
+    if (version && strlen(version) >= 3) {
+        if (version[2] == '.' && strlen(version) >= 5) {
+            file_id_suffix[8] = version[0];
+            file_id_suffix[9] = version[1];
+            file_id_suffix[10] = version[3];
+            file_id_suffix[11] = version[4];
+        } else if (version[1] == '.') { // Some homebrew apps got it wrong.
+            file_id_suffix[8] = '0';
+            file_id_suffix[9] =  version[0];
+            file_id_suffix[10] = version[2];
+            if (version[3])
+                file_id_suffix[11] = version[3];
+            else
+                file_id_suffix[11] = '0';
+        }
+    }
     if (option_leading_zeros == 0 && version[0] == '0')
         version++;
 
@@ -365,18 +398,20 @@ static struct scan *pkgrename(struct scan *scan)
         // Replace pattern variables.
         strncpy(new_basename, format_string, sizeof(new_basename) - 1);
         new_basename[sizeof(new_basename) - 1] = '\0';
-        // Types first, as they may contain other pattern variables.
+        // First, variables that do or may contain other pattern variables.
         strreplace(new_basename, "%type%", type);
         strreplace(new_basename, "%app%", app);
         strreplace(new_basename, "%dlc%", dlc);
         strreplace(new_basename, "%game%", game);
         strreplace(new_basename, "%other%", other);
         strreplace(new_basename, "%patch%", patch);
+        strreplace(new_basename, "%file_id%", "%content_id%%file_id_suffix%");
 
         strreplace(new_basename, "%app_ver%", app_ver);
         strreplace(new_basename, "%backport%", backport);
         strreplace(new_basename, "%category%", category);
         strreplace(new_basename, "%content_id%", content_id);
+        strreplace(new_basename, "%file_id_suffix%", file_id_suffix);
         strreplace(new_basename, "%firmware%", firmware);
         strreplace(new_basename, "%merged_ver%", merged_ver);
         strreplace(new_basename, "%region%", region);
@@ -389,6 +424,10 @@ static struct scan *pkgrename(struct scan *scan)
         else
             strreplace(new_basename, "%release%", release);
         strreplace(new_basename, "%sdk%", sdk);
+
+
+
+
         if (strstr(format_string, "%size%"))
             strreplace(new_basename, "%size%", size);
         strreplace(new_basename, "%title%", title);
