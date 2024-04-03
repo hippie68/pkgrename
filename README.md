@@ -36,6 +36,7 @@ The program's help screen ("pkgrename --help"):
       %backport%       "Backport" (*)
       %category%       "gp"
       %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
+      %file_id%        "EP4497-CUSA05571_00-00000000000GOTY1-A0100-V0100"
       %dlc%            "DLC"
       %firmware%       "10.01"
       %game%           "Game"
