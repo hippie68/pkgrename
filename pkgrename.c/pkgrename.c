@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef _WIN32
@@ -30,7 +31,6 @@
 #define strcasestr StrStrIA
 #define DIR_SEPARATOR '\\'
 #else
-#include <signal.h>
 #include <stdio_ext.h> // For __fpurge(); requires the GNU C Library.
 #define DIR_SEPARATOR '/'
 #endif
@@ -41,7 +41,7 @@ struct custom_category custom_category =
     {"Game", "Update", "DLC", "App", "Other"};
 char *tags[MAX_TAGS];
 int tagc;
-static int option_force_backup;
+int multiple_directories; // If 1, pkgrename() prints dir names on dir change.
 
 static void rename_file(char *filename, char *new_basename, char *path)
 {
@@ -94,6 +94,32 @@ static ssize_t get_file_size(const char *filename)
     return ret;
 }
 
+// Companion function for pkgrename().
+// Prints a message if a path has changed during pkgrename() calls.
+static void print_dir_change(const char *path)
+{
+#ifdef _WIN32
+#define realpath(name, resolved) _fullpath(resolved, name, PATH_MAX)
+#endif
+    static char old_realpath[PATH_MAX];
+    static char new_realpath[PATH_MAX];
+
+    if (realpath(*path ? path : ".", new_realpath) == NULL)
+        return;
+
+    if (strcmp(new_realpath, old_realpath) == 0)
+        return;
+
+    set_color(GRAY, stdout);
+    printf("Current directory: %s\n\n", new_realpath);
+    set_color(RESET, stdout);
+
+    strcpy(old_realpath, new_realpath);
+#ifdef _WIN32
+#undef realpath
+#endif
+}
+
 // Uses information retreived by a previous scan to rename a PS4 PKG file.
 // The .next member may not be accessed without a mutex lock.
 // Returns NULL or a pointer to a scan it needs to be called again with.
@@ -132,6 +158,12 @@ static struct scan *pkgrename(struct scan *scan)
         error_streak = 0;
     }
 
+    // Reset option_force if the current PKG is reached again.
+    if (scan_backup && scan == scan_backup) {
+        scan_backup = NULL;
+        option_force = option_force_backup;
+    }
+
     if (option_query == 0 && option_compact == 0) {
         if (first_run == 1)
             first_run = 0;
@@ -143,13 +175,13 @@ static struct scan *pkgrename(struct scan *scan)
     char *filename = scan->filename;
     char *basename; // "filename" without path.
     char lowercase_basename[MAX_FILENAME_LEN];
-    char *path; // "filename" without file.
-    static char *old_path = NULL; // Backup to decide when to print dir changes.
+    char path[PATH_MAX]; // "filename" without file.
     char tag_release_group[MAX_TAG_LEN + 1] = "";
     char tag_release[MAX_TAG_LEN + 1] = "";
     int spec_chars_current, spec_chars_total;
     int prompted_once = 0;
     int changelog_patch_detection = 1;
+    int print_ambiguity_warning = 0;
 
     // Internal pattern variables.
     char *app = NULL;
@@ -163,6 +195,7 @@ static struct scan *pkgrename(struct scan *scan)
     char *game = NULL;
     char true_ver_buf[5] = "";
     char *merged_ver = NULL;
+    char msum[7] = "";
     char *other = NULL;
     char *patch = NULL;
     char *region = NULL;
@@ -177,36 +210,22 @@ static struct scan *pkgrename(struct scan *scan)
     char *type = NULL;
     char *version = NULL;
 
-    // Define the file's basename.
+    // Define the file's basename and path.
     basename = strrchr(filename, DIR_SEPARATOR);
-    if (basename == NULL)
+    if (basename == NULL) {
         basename = filename;
-    else
+        path[0] = '.';
+        path[1] = DIR_SEPARATOR;
+        path[2] = '\0';
+    } else {
         basename++;
-
-    // Define the file's path.
-    size_t path_len = strlen(filename) - strlen(basename);
-    path = malloc(path_len + 1);
-    if (path == NULL) {
-        fputs("Out of memory.\n", stderr);
-        exit(EXIT_FAILURE);
+        strncpy(path, filename, (basename - filename));
+        path[basename - filename] = '\0';
     }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-overflow"
-    strncpy(path, filename, path_len);
-#pragma GCC diagnostic pop
-    path[path_len] = '\0';
 
     // Print directory if it's different (early).
-    if (option_compact == 0) {
-        if (old_path && strcmp(path, old_path) != 0) {
-            set_color(GRAY, stderr);
-            fprintf(stderr, "Current directory: %s\n\n", path);
-            set_color(RESET, stderr);
-        }
-        free(old_path);
-        old_path = path;
-    }
+    if (multiple_directories && option_compact == 0)
+        print_dir_change(path);
 
     // Create a lowercase copy of "basename".
     strcpy(lowercase_basename, basename);
@@ -334,6 +353,10 @@ static struct scan *pkgrename(struct scan *scan)
     if (option_leading_zeros == 0 && version[0] == '0')
         version++;
 
+    // Get compatibility checksum.
+    if (strstr(format_string, "%msum%"))
+        get_checksum(msum, filename);
+
     // Detect changelog patch level.
     if (changelog && store_patch_version(true_ver_buf, changelog)) {
         if (option_leading_zeros == 0 && true_ver_buf[0] == '0')
@@ -358,10 +381,23 @@ static struct scan *pkgrename(struct scan *scan)
     }
 
     // Detect releases.
-    release_group = get_release_group(lowercase_basename);
-    release = get_uploader(lowercase_basename);
-    if (release == NULL && changelog)
-        release = get_uploader(changelog);
+    if (strstr(format_string, "%release_group%"))
+        release_group = get_release_group(lowercase_basename);
+    if (strstr(format_string, "%release%")) {
+        int n = get_release(&release, lowercase_basename);
+        if (changelog && (release == NULL || option_override_tags == 1)) {
+            n = get_release(&release, changelog);
+            if (n > 1) {
+                // Remove all tags but the 1st.
+                // Note: if there ever is demand, this line can be removed to
+                // implement multiple release tags.
+                *(strchr(release, ',')) = '\0';
+
+                if (! option_query)
+                    print_ambiguity_warning = 1;
+            }
+        }
+    }
 
     // Get file size in GiB.
     if (strstr(format_string, "%size%")) {
@@ -414,6 +450,7 @@ static struct scan *pkgrename(struct scan *scan)
         strreplace(new_basename, "%file_id_suffix%", file_id_suffix);
         strreplace(new_basename, "%firmware%", firmware);
         strreplace(new_basename, "%merged_ver%", merged_ver);
+        strreplace(new_basename, "%msum%", msum);
         strreplace(new_basename, "%region%", region);
         if (tag_release_group[0] != '\0')
             strreplace(new_basename, "%release_group%", tag_release_group);
@@ -424,10 +461,6 @@ static struct scan *pkgrename(struct scan *scan)
         else
             strreplace(new_basename, "%release%", release);
         strreplace(new_basename, "%sdk%", sdk);
-
-
-
-
         if (strstr(format_string, "%size%"))
             strreplace(new_basename, "%size%", size);
         strreplace(new_basename, "%title%", title);
@@ -506,10 +539,8 @@ static struct scan *pkgrename(struct scan *scan)
                     putchar('\n');
 
                 // Print directory if it's different (late).
-                if (old_path && strcmp(path, old_path) != 0)
-                    printf(GRAY "Current directory: %s\n\n" RESET, path);
-                free(old_path);
-                old_path = path;
+                if (multiple_directories)
+                    print_dir_change(path);
 
                 printf("   \"%s\"\n", basename);
             }
@@ -550,6 +581,14 @@ static struct scan *pkgrename(struct scan *scan)
                 "/%d characters).\n",
                 strlen(new_basename) + 4, MAX_FILENAME_LEN - 1); // + 4: ".pkg"
             set_color(RESET, stderr);
+        }
+
+        // Warn if multiple release tags were found.
+        if (print_ambiguity_warning) {
+            set_color(BRIGHT_YELLOW, stderr);
+            fputs("Warning: release tag ambiguous (press [L] to verify).\n", stderr);
+            set_color(RESET, stderr);
+            print_ambiguity_warning = 0;
         }
 
         // Option -n: don't do anything else.
@@ -618,7 +657,7 @@ static struct scan *pkgrename(struct scan *scan)
                 putchar('\n');
                 return scan;
             }
-        } while (strchr("ynaetmorcshqblp", c) == NULL);
+        } while (strchr("ynaetmorcslhqbpT", c) == NULL);
         printf("%c\n", c);
 
         // Evaluate user input,
@@ -661,12 +700,13 @@ static struct scan *pkgrename(struct scan *scan)
                 printf("\nEnter new tag: ");
                 scan_string(tag, MAX_TAG_LEN, "", get_tag);
                 char *result;
+                int n_results;
                 if (tag[0] != '\0') {
                     if ((result = get_release_group(tag)) != NULL) {
                         printf("Using \"%s\" as release group.\n", result);
                         strncpy(tag_release_group, result, MAX_TAG_LEN);
                         tag_release_group[MAX_TAG_LEN] = '\0';
-                    } else if ((result = get_uploader(tag)) != NULL) {
+                    } else if ((n_results = get_release(&result, tag)) != 0) {
                         printf("Using \"%s\" as release.\n", result);
                         strncpy(tag_release, result, MAX_TAG_LEN);
                         tag_release[MAX_TAG_LEN] = '\0';
@@ -685,6 +725,19 @@ static struct scan *pkgrename(struct scan *scan)
                     }
                 }
                 printf("\n");
+                break;
+            case 'T': // Shift-t: remove all release tags.
+                printf("\n");
+                if (tag_release[0] || tag_release_group[0]
+                    || release || release_group)
+                    puts("Release tags have been removed.");
+                else
+                    puts("No release tags to remove.");
+                printf("\n");
+                tag_release[0] = '\0';
+                tag_release_group[0] = '\0';
+                release = NULL;
+                release_group = NULL;
                 break;
             case 'm': // [M]ix: convert title to mixed-case letter format.
                 mixed_case(title);
@@ -777,7 +830,6 @@ static struct scan *pkgrename(struct scan *scan)
                 }
                 break;
             case 'q': // [Q]uit: exit the program.
-                free(old_path);
                 exit(EXIT_SUCCESS);
         }
     }
@@ -879,6 +931,15 @@ next:
     }
 }
 
+inline static int is_dir(const char *filename)
+{
+    struct stat sb;
+    if (stat(filename, &sb))
+        return 0;
+
+    return S_ISDIR(sb.st_mode);
+}
+
 int main(int argc, char *argv[])
 {
     initialize_terminal();
@@ -896,11 +957,25 @@ int main(int argc, char *argv[])
     if (initialize_scan_job(&job, argv, argc))
         exit(EXIT_FAILURE);
 
+    // Check if operands contain directories.
+    if (option_query == 0) {
+        if (option_recursive == 1)
+            multiple_directories = 1;
+        else if (argc > 1) {
+            for (int i = 0; i < argc; i++) {
+                if (is_dir(argv[i])) {
+                    multiple_directories = 1;
+                    break;
+                }
+            }
+        }
+    }
+
     // Run file scans in a separate thread.
     pthread_t file_thread;
     int err;
     if ((err = pthread_create(&file_thread, NULL, scan_files, &job)) != 0)
-        goto error;
+        exit_err(err, __func__, __LINE__);
 
     // Parse the scan results in the main thread.
     parse_scan_results(&job);
@@ -908,7 +983,4 @@ int main(int argc, char *argv[])
     destroy_scan_job(&job);
 
     exit(EXIT_SUCCESS);
-
-error:
-    exit_err(err, __func__, __LINE__);
 }

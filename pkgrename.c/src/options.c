@@ -10,11 +10,13 @@
 int option_compact;
 int option_disable_colors;
 int option_force;
+int option_force_backup;
 int option_mixed_case;
 int option_no_placeholder;
 int option_no_to_all;
 int option_leading_zeros;
 int option_online;
+int option_override_tags;
 int option_query;
 int option_recursive;
 int option_underscores;
@@ -24,6 +26,7 @@ int option_yes_to_all;
 enum long_only_options {
     OPT_DISABLE_COLORS = 256,
     OPT_NO_PLACEHOLDER,
+    OPT_OVERRIDE_TAGS,
     OPT_PLACEHOLDER,
     OPT_PRINT_TAGS,
     OPT_SET_TYPE,
@@ -44,6 +47,7 @@ static struct option opts[] = {
     { OPT_NO_PLACEHOLDER, "no-placeholder", NULL,      "Hide characters instead of using placeholders." },
     { 'n',                "no-to-all",      NULL,      "Do not prompt; do not actually rename any files. This can be used to do a test run." },
     { 'o',                "online",         NULL,      "Automatically search online for %title%." },
+    { OPT_OVERRIDE_TAGS,  "override-tags",  NULL,      "Make changelog release tags take precedence over existing file name tags." },
     { 'p',                "pattern",        "PATTERN", "Set the file name pattern to string PATTERN." },
     { OPT_PLACEHOLDER,    "placeholder",    "X",       "Set the placeholder character to X." },
     { OPT_PRINT_TAGS,     "print-tags",     NULL,      "Print all built-in release tags." },
@@ -61,14 +65,15 @@ static struct option opts[] = {
 
 void print_version(void)
 {
-    printf("Version 1.07a, build date: %s\n", __DATE__);
+    printf("Version 1.08 BETA, build date: %s\n", __DATE__);
     printf("Get the latest version at "
         "\"%s\".\n", HOMEPAGE_LINK);
     printf("Report bugs, request features, or add missing tags at "
         "\"%s\".\n", SUPPORT_LINK);
 }
 
-void print_prompt_help(void) {
+void print_prompt_help(void)
+{
     fputs(
         "  - [Y]es      Rename the file as seen.\n"
         "  - [N]o       Skip the file and drop all changes.\n"
@@ -85,12 +90,14 @@ void print_prompt_help(void) {
         "  - [Q]uit     Exit the program.\n"
         "  - [B]        Toggle the \"Backport\" tag.\n"
         "  - [P]        Toggle changelog patch detection for the current PKG.\n"
+        "  - Shift-[T]  Remove all release tags.\n"
         "  - Backspace  Go back to the previous PKG.\n"
         "  - Space      Return to the current PKG.\n"
         , stdout);
 }
 
-void print_usage(void) {
+void print_usage(void)
+{
     fputs(
         "Usage: pkgrename [OPTIONS] [FILE|DIRECTORY ...]\n"
         "\n"
@@ -107,9 +114,11 @@ void print_usage(void) {
         "  %category%       \"gp\"\n"
         "  %content_id%     \"EP4497-CUSA05571_00-00000000000GOTY1\"\n"
         "  %dlc%            \"DLC\"\n"
+        "  %file_id%        \"EP4497-CUSA05571_00-00000000000GOTY1-A0403-V0100\"\n"
         "  %firmware%       \"10.01\"\n"
         "  %game%           \"Game\"\n"
         "  %merged_ver%     \"\" (**)\n"
+        "  %msum%           \"3E57B0\" (***)\n"
         "  %other%          \"Other\"\n"
         "  %patch%          \"Update\"\n"
         "  %region%         \"EU\"\n"
@@ -120,7 +129,7 @@ void print_usage(void) {
         "  %title%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
         "  %title_id%       \"CUSA05571\"\n"
         "  %true_ver%       \"4.03\" (**)\n"
-        "  %type%           \"Update\" (***)\n"
+        "  %type%           \"Update\" (****)\n"
         "  %version%        \"1.00\"\n"
         "\n"
         "  (*) Backports not targeting 5.05 are detected by searching file names for the\n"
@@ -133,7 +142,10 @@ void print_usage(void) {
         "  is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.\n"
         "  %merged_ver% is always empty for non-app PKGs.\n"
         "\n"
-        "  (***) %type% is %category% mapped to \"Game,Update,DLC,App,Other\".\n"
+        "  (***) A checksum that indicates whether game and update PKGs that have the same\n"
+        "  Title ID are compatible with each other (\"married\")."
+        "\n"
+        "  (****) %type% is %category% mapped to \"Game,Update,DLC,App,Other\".\n"
         "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
         "    --set-type \"Game,Patch %app_ver%,DLC,-,-\" (no spaces before or after commas)\n"
         "  Each string must have a value. To hide a category, use the value \"-\".\n"
@@ -276,6 +288,7 @@ void parse_options(int *argc, char **argv[])
 #endif
             case 'f':
                 option_force = 1;
+                option_force_backup = 1;
                 break;
             case 'h':
                 print_usage();
@@ -294,6 +307,9 @@ void parse_options(int *argc, char **argv[])
                 break;
             case 'o':
                 option_online = 1;
+                break;
+            case OPT_OVERRIDE_TAGS:
+                option_override_tags = 1;
                 break;
             case 'p':
                 optf_pattern(optarg);

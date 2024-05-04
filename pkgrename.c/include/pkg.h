@@ -18,4 +18,8 @@ void print_param_sfo(const unsigned char *param_sfo_buf);
 // Returns 1 if the patch version has been found, otherwise 0.
 int store_patch_version(char *version_buf, const char *changelog);
 
+// Get a PKG file's compatibility checksum.
+int get_checksum(char msum[7], const char *filename);
+
 #endif
+

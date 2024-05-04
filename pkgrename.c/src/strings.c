@@ -13,7 +13,7 @@
 #include <string.h>
 
 // Case-insensitively tests if a string contains a word
-inline char *strwrd(char *string, char *word) {
+inline char *strwrd(const char *string, char *word) {
   char *p = strcasestr(string, word);
   if (p == NULL)
     return NULL;

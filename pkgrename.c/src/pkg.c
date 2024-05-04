@@ -19,6 +19,16 @@ struct pkg_header {
     uint32_t entry_count;
     uint32_t garbage_data;
     uint32_t table_offset;
+    uint32_t entry_data_size;
+    uint64_t body_offset;
+    uint64_t body_size;
+    uint64_t content_offset;
+    uint64_t content_size;
+    unsigned char content_id[36];
+    unsigned char padding[12];
+    uint32_t drm_type;
+    uint32_t content_type;
+    uint32_t content_flags;
 } __attribute__ ((packed, scalar_storage_order("big-endian"))); // Requires GCC.
 
 struct pkg_table_entry {
@@ -259,4 +269,64 @@ void print_param_sfo(const unsigned char *param_sfo_buf)
                 break;
         }
     }
+}
+
+int get_checksum(char msum[7], const char *filename)
+{
+    unsigned char buf[32];
+
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "Could not open file \"%s\".\n", filename);
+        return -1;
+    }
+
+    struct pkg_header header;
+    if (fread((void *) &header, sizeof(header), 1, file) != 1)
+        goto read_error;
+
+    if (header.content_type == 27) // DLC
+        goto error;
+
+    uint32_t target_id;
+    switch (header.content_flags & 0x0F000000) {
+        case 0x0A000000:
+            target_id = 0x1001;
+            break;
+        case 0x02000000:
+            target_id = 0x1008;
+            break;
+        default:
+            goto error;
+    }
+
+    if (fseek(file, header.table_offset, SEEK_SET))
+        goto read_error;
+    struct pkg_table_entry entry;
+    if (fread((void *) &entry, sizeof(entry), 1, file) != 1)
+        goto read_error;
+    uint32_t digests_offset = entry.offset;
+    for (uint32_t i = 1; i < header.entry_count; i++) {
+        if (fread((void *) &entry, sizeof(entry), 1, file) != 1)
+            goto read_error;
+        if (entry.id == target_id) {
+            if (fseek(file, digests_offset + i * 32, SEEK_SET))
+                goto read_error;
+            if (fread(buf, 32, 1, file) != 1)
+                goto read_error;
+
+            fclose(file);
+            for (int c = 0; c < 3; c++)
+                sprintf(msum + c * 2, "%02X", buf[c]);
+            msum[6] = '\0';
+            return 0;
+        }
+    }
+    goto error;
+
+read_error:
+    fprintf(stderr, "Could not read from file \"%s\".\n", filename);
+error:
+    fclose(file);
+    return -1;
 }

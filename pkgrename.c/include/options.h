@@ -1,9 +1,11 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+extern int option_override_tags;
 extern int option_compact;
 extern int option_disable_colors;
 extern int option_force;
+extern int option_force_backup;
 extern int option_mixed_case;
 extern int option_no_placeholder;
 extern int option_no_to_all;

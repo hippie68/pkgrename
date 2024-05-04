@@ -127,12 +127,14 @@ void scan_string(char *string, size_t max_size, char *default_string, char *(*f)
   #define KEY_ENTER 13
   #define KEY_LEFT_ARROW 37
   #define KEY_RIGHT_ARROW 39
+  #define KEY_TAB 9
   #else
   #define KEY_BACKSPACE 127
   #define KEY_DELETE 126
   #define KEY_ENTER 13
   #define KEY_LEFT_ARROW 68
   #define KEY_RIGHT_ARROW 67
+  #define KEY_TAB 9
   #endif
 
   char key;
@@ -143,7 +145,7 @@ void scan_string(char *string, size_t max_size, char *default_string, char *(*f)
   printf("%s", buffer);
   size_t i = strlen(buffer);
 
-  while ((key = getchar()) != KEY_ENTER) { // Enter key
+  while ((key = getchar()) != KEY_ENTER && key != KEY_TAB) { // Enter key
     //printf("Number: %d\n", key); // DEBUG
     switch (key) {
       #ifndef _WIN32

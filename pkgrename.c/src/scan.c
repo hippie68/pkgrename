@@ -197,47 +197,56 @@ void print_scan_error(struct scan *scan)
 }
 
 // Companion function for qsort in parse_directory().
-static int qsort_compare_strings(const void *p, const void *q) {
+static int qsort_compare_strings(const void *p, const void *q)
+{
     return strcmp(*(const char **)p, *(const char **)q);
+}
+
+inline static int is_root(const char *dir)
+{
+    if (dir[0] == DIR_SEPARATOR && dir[1] == '\0')
+        return 1;
+    return 0;
 }
 
 // Finds all .pkg files in a directory and runs a scan on them.
 // Returns 0 on success and -1 on error.
-int parse_directory(char *directory_name, struct scan_job *job)
+int parse_directory(char *cur_dir, struct scan_job *job)
 {
     int retval = 0;
 
     DIR *dir;
-    struct dirent *directory_entry;
+    struct dirent *dir_entry;
 
-    size_t directory_count_max = 100;
+    size_t dir_count_max = 100;
     size_t file_count_max = 100;
-    char **directory_names = malloc(sizeof(void *) * directory_count_max);
+    char **dir_names = malloc(sizeof(void *) * dir_count_max);
     char **filenames = malloc(sizeof(void *) * file_count_max);
-    size_t directory_count = 0, file_count = 0;
+    size_t dir_count = 0, file_count = 0;
 
-    // Remove a possibly trailing directory separator.
+    // Remove trailing directory separators.
     {
-        int len = strlen(directory_name);
-        if (len > 1 && directory_name[len - 1] == DIR_SEPARATOR) {
-            directory_name[len - 1] = '\0';
+        int len = strlen(cur_dir);
+        while (len > 1 && cur_dir[len - 1] == DIR_SEPARATOR) {
+            cur_dir[len - 1] = '\0';
+            len--;
         }
     }
 
-    dir = opendir(directory_name); // TODO: better error handling.
+    dir = opendir(cur_dir); // TODO: better error handling.
     if (dir == NULL) {
         retval = -1;
         goto cleanup;
     }
 
     // Read all directory entries to put them in lists.
-    while ((directory_entry = readdir(dir)) != NULL) {
+    while ((dir_entry = readdir(dir)) != NULL) {
         // Entry is a directory.
 #ifdef _WIN32 // MinGW does not know .d_type.
         struct stat statbuf;
         char path[PATH_MAX];
-        snprintf(path, sizeof(path), "%s%c%s", directory_name, DIR_SEPARATOR,
-            directory_entry->d_name);
+        snprintf(path, sizeof(path), "%s%c%s", is_root(cur_dir) ? "" : cur_dir,
+            DIR_SEPARATOR, dir_entry->d_name);
         if (stat(path, &statbuf) == -1) {
             set_color(BRIGHT_RED, stderr);
             fprintf(stderr, "Could not read file system information: \"%s\".\n",
@@ -247,33 +256,51 @@ int parse_directory(char *directory_name, struct scan_job *job)
         }
         if (S_ISDIR(statbuf.st_mode)) {
 #else
-        if (directory_entry->d_type == DT_DIR) {
+        if (dir_entry->d_type == DT_DIR) {
 #endif
-            // Save name in the directory list
+            // Save name in the directory list.
             if (option_recursive == 1
-                && directory_entry->d_name[0] != '.'
-                && directory_entry->d_name[0] != '$') { // Exclude system dirs.
-                directory_names[directory_count] = malloc(strlen(directory_name)
-                    + 1 + strlen(directory_entry->d_name) + 1);
-                sprintf(directory_names[directory_count], "%s%c%s",
-                    directory_name, DIR_SEPARATOR, directory_entry->d_name);
-                directory_count++;
-                if (directory_count == directory_count_max) {
-                    directory_count_max *= 2;
-                    directory_names = realloc(directory_names,
-                        sizeof(void *) * directory_count_max);
+                && dir_entry->d_name[0] != '.'
+                && dir_entry->d_name[0] != '$') // Exclude system dirs.
+            {
+                size_t size;
+                if (is_root(cur_dir))
+                    size = 1 + strlen(dir_entry->d_name) + 1;
+                else
+                    size = strlen(cur_dir) + 1 + strlen(dir_entry->d_name) + 1;
+                if ((dir_names[dir_count] = malloc(size)) == NULL) {
+                    retval = -1;
+                    goto cleanup;
+                }
+
+                sprintf(dir_names[dir_count], "%s%c%s", is_root(cur_dir) ? ""
+                    : cur_dir, DIR_SEPARATOR, dir_entry->d_name);
+                dir_count++;
+                if (dir_count == dir_count_max) {
+                    dir_count_max *= 2;
+                    dir_names = realloc(dir_names, sizeof(void *)
+                        * dir_count_max);
                 }
             }
         // Entry is .pkg file.
         } else {
-            char *file_extension = strrchr(directory_entry->d_name, '.');
+            char *file_extension = strrchr(dir_entry->d_name, '.');
             if (file_extension != NULL
-                && strcasecmp(file_extension, ".pkg") == 0) {
+                && strcasecmp(file_extension, ".pkg") == 0)
+            {
                 // Save name in the file list.
-                filenames[file_count] = malloc(strlen(directory_name) + 1
-                    + strlen(directory_entry->d_name) + 1);
-                sprintf(filenames[file_count], "%s%c%s", directory_name,
-                    DIR_SEPARATOR,  directory_entry->d_name);
+                size_t size;
+                if (is_root(cur_dir))
+                    size = 1 + strlen(dir_entry->d_name) + 1;
+                else
+                    size = strlen(cur_dir) + 1 + strlen(dir_entry->d_name) + 1;
+                if ((filenames[file_count] = malloc(size)) == NULL) {
+                    retval = -1;
+                    goto cleanup;
+                }
+
+                sprintf(filenames[file_count], "%s%c%s", is_root(cur_dir) ?  ""
+                    : cur_dir, DIR_SEPARATOR,  dir_entry->d_name);
                 file_count++;
                 if (file_count == file_count_max) {
                     file_count_max *= 2;
@@ -285,7 +312,7 @@ int parse_directory(char *directory_name, struct scan_job *job)
     }
 
     // Sort the final lists.
-    qsort(directory_names, directory_count, sizeof(char *),
+    qsort(dir_names, dir_count, sizeof(char *),
         qsort_compare_strings);
     qsort(filenames, file_count, sizeof(char *), qsort_compare_strings);
 
@@ -295,16 +322,16 @@ int parse_directory(char *directory_name, struct scan_job *job)
 
     // Parse sorted directories recursively.
     if (option_recursive == 1) {
-        for (size_t i = 0; i < directory_count; i++) {
-            parse_directory(directory_names[i], job);
-            free(directory_names[i]);
+        for (size_t i = 0; i < dir_count; i++) {
+            parse_directory(dir_names[i], job);
+            free(dir_names[i]);
         }
     }
 
     closedir(dir);
 
 cleanup:
-    free(directory_names);
+    free(dir_names);
     free(filenames);
 
     return retval;

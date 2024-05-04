@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
 #define ERR_SHRTOPT_UNKNOWN "Unknown option: -%c\n"
 #define ERR_LONGOPT_UNKNOWN "Unknown option: --%s\n"
 #define ERR_COMMAND_UNKNOWN "Unknown subcommand: %s\n"
+#define ERR_SHRTOPT_HATEARG "Option -%c doesn't allow an argument.\n"
 #define ERR_LONGOPT_HATEARG "Option --%s doesn't allow an argument.\n"
 
 static char var_HIDEOPT; // Dummy variable to make the HIDEOPT pointer unique.
@@ -112,7 +113,7 @@ int getopt(int *argc, char **argv[], char **optarg, const struct option opts[])
 
     char *argp; // Pointer used to probe the command line arguments.
 
-    start:
+start:
     argp = **argv;
     if (*argp == '-') { // Option
         argp++;
@@ -182,6 +183,10 @@ int getopt(int *argc, char **argv[], char **optarg, const struct option opts[])
                         if (opt->arg) {
                             *optarg = argp + 1;
                         } else {
+                            if (*(argp + 1) == '-') { // Unwanted argument.
+                                fprintf(stderr, ERR_SHRTOPT_HATEARG, *argp);
+                                return '?';
+                            }
                             *argp = '-';
                             **argv = argp; // Scan here again next round.
                             (*argv)--;
@@ -196,7 +201,7 @@ int getopt(int *argc, char **argv[], char **optarg, const struct option opts[])
             return '?';
         }
     } else { // Either operand or subcommand
-        not_an_option:
+not_an_option:
         ;
 
         // Return if operand is a subcommand.
@@ -227,9 +232,7 @@ int getopt(int *argc, char **argv[], char **optarg, const struct option opts[])
         goto start;
     }
 
-    parsing_finished:
-    ;
-
+parsing_finished:
     // Unhide any previously hidden operands.
     while ((*argv)[*argc] != NULL)
         (*argc)++;
@@ -279,7 +282,7 @@ static void print_block(FILE *stream, char *str, int indent, int start)
             chars_left -= next_len;
         }
 
-        next_line:
+next_line:
         putc('\n', stream);
         start = 0;
     }
