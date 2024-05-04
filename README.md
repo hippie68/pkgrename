@@ -37,9 +37,11 @@ The program's help screen ("pkgrename --help"):
       %category%       "gp"
       %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
       %dlc%            "DLC"
+      %file_id%        "EP4497-CUSA05571_00-00000000000GOTY1-A0403-V0100"
       %firmware%       "10.01"
       %game%           "Game"
       %merged_ver%     "" (**)
+      %msum%           "3E57B0" (***)
       %other%          "Other"
       %patch%          "Update"
       %region%         "EU"
@@ -50,7 +52,7 @@ The program's help screen ("pkgrename --help"):
       %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
       %title_id%       "CUSA05571"
       %true_ver%       "4.03" (**)
-      %type%           "Update" (***)
+      %type%           "Update" (****)
       %version%        "1.00"
     
       (*) Backports not targeting 5.05 are detected by searching file names for the
@@ -63,7 +65,10 @@ The program's help screen ("pkgrename --help"):
       is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
       %merged_ver% is always empty for non-app PKGs.
     
-      (***) %type% is %category% mapped to "Game,Update,DLC,App,Other".
+      (***) A checksum that indicates whether game and update PKGs that have the same
+      Title ID are compatible with each other ("married").
+      
+      (****) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
         --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
       Each string must have a value. To hide a category, use the value "-".
@@ -112,6 +117,7 @@ The program's help screen ("pkgrename --help"):
       - [Q]uit     Exit the program.
       - [B]        Toggle the "Backport" tag.
       - [P]        Toggle changelog patch detection for the current PKG.
+      - Shift-[T]  Remove all release tags.
       - Backspace  Go back to the previous PKG.
       - Space      Return to the current PKG.
     
@@ -129,6 +135,8 @@ The program's help screen ("pkgrename --help"):
       -n, --no-to-all            Do not prompt; do not actually rename any files.
                                  This can be used to do a test run.
       -o, --online               Automatically search online for %title%.
+          --override-tags        Make changelog release tags take precedence over
+                                 existing file name tags.
       -p, --pattern PATTERN      Set the file name pattern to string PATTERN.
           --placeholder X        Set the placeholder character to X.
           --print-tags           Print all built-in release tags.
