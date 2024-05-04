@@ -143,7 +143,7 @@ void print_usage(void)
         "  %merged_ver% is always empty for non-app PKGs.\n"
         "\n"
         "  (***) A checksum that indicates whether game and update PKGs that have the same\n"
-        "  Title ID are compatible with each other (\"married\")."
+        "  Title ID are compatible with each other (\"married\").\n"
         "\n"
         "  (****) %type% is %category% mapped to \"Game,Update,DLC,App,Other\".\n"
         "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
