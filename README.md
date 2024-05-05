@@ -13,6 +13,8 @@ pkgrename.c is a standalone, advanced version of the original Bash script, writt
 
 # Manual
 
+[Please note that this manual reflects the current code and not necessarily the latest release.]
+
 The program in action looks like this:
 
     $ pkgrename
