@@ -706,22 +706,67 @@ static struct scan *pkgrename(struct scan *scan)
                         printf("Using \"%s\" as release group.\n", result);
                         strncpy(tag_release_group, result, MAX_TAG_LEN);
                         tag_release_group[MAX_TAG_LEN] = '\0';
-                    } else if ((n_results = get_release(&result, tag)) != 0) {
+                    }          
+                    if ((n_results = get_release(&result, tag)) != 0) {
                         printf("Using \"%s\" as release.\n", result);
                         strncpy(tag_release, result, MAX_TAG_LEN);
                         tag_release[MAX_TAG_LEN] = '\0';
-                    } else if (strcmp(tag, "Backport") == 0) {
-                        if (backport) {
-                            printf("Backport tag disabled.\n");
-                            backport = NULL;
+                    } 
+
+                    char *tok = strtok(tag, ",");
+                    while (tok) {
+                        if (strcasecmp(tok, "Backport") == 0) {
+                            if (backport) {
+                                printf("Backport tag disabled.\n");
+                                backport = NULL;
+                            } else {
+                                printf("Backport tag enabled.\n");
+                                backport = "Backport";
+                            }
                         } else {
-                            printf("Backport tag enabled.\n");
-                            backport = "Backport";
+                            if (tag_release_group[0]
+                                    && get_release_group(tok)) {
+                                if (strcasecmp(tag_release_group, tok) != 0)
+                                    printf("Cannot enter multiple release groups (\"%s\").\n", tok);
+                            } else if (strcasestr(tag_release, tok) == NULL) {
+                                printf("Using \"%s\" as release (not found in the database).\n", tok);
+                                if (tag_release[0]) {
+                                    size_t len = strlen(tag_release);
+                                    if (strchr(tag_release, ',')) {
+                                        // Insert tok in alphabetic order.
+                                        char buf[MAX_TAG_LEN] = "";
+                                        char *next_tag_start = tag_release;
+                                        while(1) {
+                                            char *next_tag_end = strchr(next_tag_start, ',');
+                                            if (next_tag_end == NULL)
+                                                next_tag_end = tag_release + strlen(tag_release);
+                                            memcpy(buf, next_tag_start, next_tag_end - next_tag_start);
+                                            buf[next_tag_end - next_tag_start] = '\0';
+                                            if (strcasecmp(buf, tok) > 0) {
+                                                memset(buf, 0, MAX_TAG_LEN);
+                                                strncpy(buf, tag_release, next_tag_start - tag_release);
+                                                strncat(buf, tok, MAX_TAG_LEN - 1 - strlen(buf));
+                                                if (next_tag_start != 0)
+                                                    strcat(buf, ",");
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
+                                                strncat(buf, next_tag_start, MAX_TAG_LEN - 1 - strlen(buf));
+#pragma GCC diagnostic pop
+                                                memcpy(tag_release, buf, MAX_TAG_LEN);
+                                                break;
+                                            } 
+                                            next_tag_start = next_tag_end + 1;
+                                        }
+                                    } else
+                                        snprintf(tag_release + len, MAX_TAG_LEN - len, ",%s", tok); 
+                                } else {
+                                    strncpy(tag_release + strlen(tag_release), tok, MAX_TAG_LEN);
+                                    tag_release[MAX_TAG_LEN] = '\0';
+                                }
+                            }
                         }
-                    } else {
-                        printf("Using \"%s\" as release.\n", tag);
-                        strncpy(tag_release, tag, MAX_TAG_LEN);
-                        tag_release[MAX_TAG_LEN] = '\0';
+
+                       tok = strtok(NULL, ",");
                     }
                 }
                 printf("\n");
