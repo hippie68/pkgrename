@@ -65,7 +65,7 @@ static struct option opts[] = {
 
 void print_version(void)
 {
-    printf("Version 1.08 BETA, build date: %s\n", __DATE__);
+    printf("Version 1.08, build date: %s\n", __DATE__);
     printf("Get the latest version at "
         "\"%s\".\n", HOMEPAGE_LINK);
     printf("Report bugs, request features, or add missing tags at "

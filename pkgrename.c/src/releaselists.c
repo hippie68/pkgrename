@@ -151,7 +151,8 @@ int get_release(char **release, const char *string)
     struct rls_list *p = releases;
     while (p->name != NULL) {
         if (!matches_user_tag(p->name) && (strwrd(string, p->name)
-            || (p->alt_name != NULL && strwrd(string, p->alt_name))))
+            || (p->alt_name != NULL && strwrd(string, p->alt_name))
+            || (strcmp(p->name, "Fugazi") == 0 && strcasestr(string, "fxd"))))
             found[n_found++] = p->name;
         p++;
     }
