@@ -67,8 +67,9 @@ The program's help screen ("pkgrename --help"):
       is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
       %merged_ver% is always empty for non-app PKGs.
     
-      (***) A checksum that indicates whether game and update PKGs that have the same
-      Title ID are compatible with each other ("married").
+      (***) A checksum that indicates whether game and update PKGs that have the
+      same Title ID are compatible with each other ("married"). This pattern
+      variable will be empty for PKGs of other types.
       
       (****) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
@@ -167,7 +168,7 @@ You can organize your PKGs by tagging them:
 
     Enter new tag: dup  [DUPLEX]
 
-Pressing Enter at this point will use word completion to apply the suggested value:
+Pressing Tab at this point will use word completion to apply the suggested value. You can enter multiple tags by separating them with commas. Press Enter to apply the changes and any remaining word suggestion:
 
     => "Assassin's Creed Valhalla [v1.00] [CUSA18534] [DUPLEX].pkg"
     [Y/N/A] [E]dit [T]ag [M]ix [O]nline [R]eset [C]hars [S]FO [L]og [H]elp [Q]uit: 
