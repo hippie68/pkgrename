@@ -11,7 +11,7 @@
 
 #define MAX_FILENAME_LEN 256 // exFAT file name limit (+1)
 #define MAX_FORMAT_STRING_LEN 512
-#define MAX_TAG_LEN 20
+#define MAX_TAG_LEN 50
 #define MAX_TAGS 100
 #define MAX_TITLE_LEN 128 // https://www.psdevwiki.com/ps4/Param.sfo#TITLE
 

@@ -54,11 +54,11 @@ static struct rls_list release_groups[] = {
 
 // List of releases
 static struct rls_list releases[] = {
-    {"CyB1K", "rayku22"},
-    {"OPOISSO893", "opoisso"},
     {"Arczi"},
+    {"CyB1K", "rayku22"},
     {"Fugazi", "mrboot"},
     {"High Speed", "highspeed33"},
+    {"OPOISSO893", "opoisso"},
     {"SeanP2500", "seanp"},
     {"TKJ13"},
     {"TRIFECTA"},
@@ -201,6 +201,14 @@ static int strings_match(char *str1, char *str2)
 char *get_tag(char *string)
 {
     struct rls_list *p;
+
+    // Ignore already entered tags that are separated by commas.
+    char *last_comma = strrchr(string, ',');
+    if (last_comma != NULL) {
+        string = last_comma + 1;
+        while (*string == ' ')
+            string++;
+    }
 
     p = release_groups;
     while (p->name != NULL) {
