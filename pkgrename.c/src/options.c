@@ -32,6 +32,7 @@ enum long_only_options {
     OPT_SET_TYPE,
     OPT_TAGFILE,
     OPT_TAGS,
+    OPT_TAG_SEPARATOR,
     OPT_VERSION,
 };
 
@@ -65,7 +66,7 @@ static struct option opts[] = {
 
 void print_version(void)
 {
-    printf("Version 1.08, build date: %s\n", __DATE__);
+    printf("Version 1.08a, build date: %s\n", __DATE__);
     printf("Get the latest version at "
         "\"%s\".\n", HOMEPAGE_LINK);
     printf("Report bugs, request features, or add missing tags at "

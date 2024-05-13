@@ -390,7 +390,7 @@ static struct scan *pkgrename(struct scan *scan)
             if (n > 1) {
                 // Remove all tags but the 1st.
                 // Note: if there ever is demand, this line can be removed to
-                // implement multiple release tags.
+                // automatically retreive all tags from the changelog. 
                 *(strchr(release, ',')) = '\0';
 
                 if (! option_query)
@@ -452,7 +452,7 @@ static struct scan *pkgrename(struct scan *scan)
         strreplace(new_basename, "%merged_ver%", merged_ver);
         strreplace(new_basename, "%msum%", msum);
         strreplace(new_basename, "%region%", region);
-        if (tag_release_group[0] != '\0')
+        if (tag_release_group[0] != '\0')                    
             strreplace(new_basename, "%release_group%", tag_release_group);
         else
             strreplace(new_basename, "%release_group%", release_group);
@@ -699,36 +699,30 @@ static struct scan *pkgrename(struct scan *scan)
                 char tag[MAX_TAG_LEN] = "";
                 printf("\nEnter new tag: ");
                 scan_string(tag, MAX_TAG_LEN, "", get_tag);
+                trim_string(tag, " ,", " ,");
                 char *result;
                 int n_results;
                 if (tag[0] != '\0') {
-                    // Trim leading whitespace and commas.
-                    size_t len = strlen(tag);
-                    size_t i = 0;
-                    while(tag[i] == ' ' || tag[i] == ',')
-                        i++;
-                    if (i > 0)
-                        memmove(tag, tag + i, len - i + 1);
-
-                    // Trim trailing whitespace and commas.
-                    i = len - 1;
-                    while (tag[i] == ' ' || tag[i] == ',')
-                        tag[i--] = '\0';
-
+                    // Get entered known release groups.
                     if ((result = get_release_group(tag)) != NULL) {
                         printf("Using \"%s\" as release group.\n", result);
                         strncpy(tag_release_group, result, MAX_TAG_LEN);
                         tag_release_group[MAX_TAG_LEN] = '\0';
                     }          
+
+                    // Get entered known releases.
                     if ((n_results = get_release(&result, tag)) != 0) {
                         printf("Using \"%s\" as release.\n", result);
                         strncpy(tag_release, result, MAX_TAG_LEN);
                         tag_release[MAX_TAG_LEN] = '\0';
-                    } 
+                    }
 
+                    // Get Backport tags and unknown tags.
+                    int unknown_tag_entered = 0;
                     int show_database_hint = 0;
                     char *tok = strtok(tag, ",");
                     while (tok) {
+                        trim_string(tok, " ", " ");
                         if (strcasecmp(tok, "Backport") == 0) {
                             if (backport) {
                                 printf("Backport tag disabled.\n");
@@ -743,14 +737,15 @@ static struct scan *pkgrename(struct scan *scan)
                                 if (strcasecmp(tag_release_group, tok) != 0)
                                     printf("Cannot enter multiple release groups (\"%s\").\n", tok);
                             } else {
-                                // Ugly hack to erase previously entered tags
-                                // that are not yet in the database.
-                                if (tag_release[0] && n_results == 0) {
-                                    tag_release[0] = '\0';
-                                    n_results = 1;
+                                // Make sure existing releases reset when a new
+                                // unknown tag was entered. 
+                                if (unknown_tag_entered == 0) {
+                                    unknown_tag_entered = 1;
+                                    if (n_results == 0)
+                                        tag_release[0] = '\0';
                                 }
 
-                                if (strwrd(tag_release, tok) == NULL) {
+                                if (strwrd(tag_release, tok) == NULL) { // Ignore duplicates.
                                     printf("Using \"%s\" as release. ", tok);
                                     set_color(BRIGHT_YELLOW, stdout);
                                     printf("%s", "<- MISSING FROM DATABASE\n");
@@ -758,35 +753,42 @@ static struct scan *pkgrename(struct scan *scan)
                                     show_database_hint = 1;
 
                                     if (tag_release[0]) {
-                                        size_t len = strlen(tag_release);
-                                        if (strchr(tag_release, ',')) {
-                                            // Insert tok in alphabetic order.
-                                            char buf[MAX_TAG_LEN] = "";
-                                            char *next_tag_start = tag_release;
-                                            while(1) {
-                                                char *next_tag_end = strchr(next_tag_start, ',');
-                                                if (next_tag_end == NULL)
-                                                    next_tag_end = tag_release + strlen(tag_release);
-                                                memcpy(buf, next_tag_start, next_tag_end - next_tag_start);
-                                                buf[next_tag_end - next_tag_start] = '\0';
-                                                if (strcasecmp(buf, tok) > 0) {
-                                                    memset(buf, 0, MAX_TAG_LEN);
-                                                    strncpy(buf, tag_release, next_tag_start - tag_release);
-                                                    strncat(buf, tok, MAX_TAG_LEN - 1 - strlen(buf));
-                                                    if (next_tag_start != 0)
-                                                        strcat(buf, ",");
+                                        // Add current tok in alphabetic order.
+                                        char buf[MAX_TAG_LEN] = "";
+                                        char *next_tag_start = tag_release;
+                                        while(1) {
+                                            char *next_tag_end = strchr(next_tag_start, ',');
+                                            if (next_tag_end == NULL)
+                                                next_tag_end = tag_release + strlen(tag_release);
+                                            memcpy(buf, next_tag_start, next_tag_end - next_tag_start);
+                                            buf[next_tag_end - next_tag_start] = '\0';
+
+                                            // Found correct order -> insert.
+                                            if (strcasecmp(buf, tok) > 0) {
+                                                memset(buf, 0, MAX_TAG_LEN);
+                                                strncpy(buf, tag_release, next_tag_start - tag_release);
+                                                strncat(buf, tok, MAX_TAG_LEN - 1 - strlen(buf));
+                                                if (next_tag_start != 0)
+                                                    strcat(buf, ",");
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
-                                                    strncat(buf, next_tag_start, MAX_TAG_LEN - 1 - strlen(buf));
+                                                strncat(buf, next_tag_start, MAX_TAG_LEN - 1 - strlen(buf));
 #pragma GCC diagnostic pop
-                                                    memcpy(tag_release, buf, MAX_TAG_LEN);
-                                                    break;
-                                                } 
-                                                next_tag_start = next_tag_end + 1;
+                                                memcpy(tag_release, buf, MAX_TAG_LEN);
+                                                break;
+                                            } 
+                                            
+                                            // Reached the end -> append.
+                                            if (*next_tag_end == '\0') {
+                                                size_t len = strlen(tag_release);
+                                                snprintf(tag_release + len, MAX_TAG_LEN - len, ",%s", tok); 
+                                                break;
                                             }
-                                        } else
-                                            snprintf(tag_release + len, MAX_TAG_LEN - len, ",%s", tok); 
+
+                                            next_tag_start = next_tag_end + 1;
+                                        }
                                     } else {
+                                        // First value; simply copy it.
                                         strncpy(tag_release + strlen(tag_release), tok, MAX_TAG_LEN);
                                         tag_release[MAX_TAG_LEN] = '\0';
                                     }
@@ -799,7 +801,7 @@ static struct scan *pkgrename(struct scan *scan)
 
                     if (show_database_hint) {
                         set_color(BRIGHT_YELLOW, stdout);
-                        puts("\nUse option --tags or --tagfile to add missing tags to the database.");
+                        puts("\nUse command line option --tags or --tagfile to add missing tags to the database.");
                         set_color(RESET, stdout);
                     }
                 }
