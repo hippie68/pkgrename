@@ -11,6 +11,10 @@ int get_release(char **release, const char *string);
 // Returns the name of a tag if it is found in "string".
 char *get_tag(char *string);
 
+// Replaces all commas in a release tag with a custom string.
+// The buffer <tag> is stored in must be of length MAX_TAG_LEN.
+void replace_commas_in_tag(char *tag, const char *string);
+
 // Searches a changelog buffer for all known release tags and prints them.
 void print_changelog_tags(const char *changelog_buf);
 

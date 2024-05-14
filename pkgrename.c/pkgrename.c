@@ -395,8 +395,11 @@ static struct scan *pkgrename(struct scan *scan)
 
                 if (! option_query)
                     print_ambiguity_warning = 1;
-            }
+           }
         }
+
+        if (release && n > 1 && option_tag_separator)
+            replace_commas_in_tag(release, option_tag_separator);
     }
 
     // Get file size in GiB.
@@ -452,7 +455,7 @@ static struct scan *pkgrename(struct scan *scan)
         strreplace(new_basename, "%merged_ver%", merged_ver);
         strreplace(new_basename, "%msum%", msum);
         strreplace(new_basename, "%region%", region);
-        if (tag_release_group[0] != '\0')                    
+        if (tag_release_group[0] != '\0')
             strreplace(new_basename, "%release_group%", tag_release_group);
         else
             strreplace(new_basename, "%release_group%", release_group);
@@ -586,7 +589,8 @@ static struct scan *pkgrename(struct scan *scan)
         // Warn if multiple release tags were found.
         if (print_ambiguity_warning) {
             set_color(BRIGHT_YELLOW, stderr);
-            fputs("Warning: release tag ambiguous (press [L] to verify).\n", stderr);
+            fputs("Warning: release tag ambiguous (press [L] to verify).\n",
+                    stderr);
             set_color(RESET, stderr);
             print_ambiguity_warning = 0;
         }
@@ -776,8 +780,8 @@ static struct scan *pkgrename(struct scan *scan)
 #pragma GCC diagnostic pop
                                                 memcpy(tag_release, buf, MAX_TAG_LEN);
                                                 break;
-                                            } 
-                                            
+                                            }
+
                                             // Reached the end -> append.
                                             if (*next_tag_end == '\0') {
                                                 size_t len = strlen(tag_release);
@@ -804,6 +808,9 @@ static struct scan *pkgrename(struct scan *scan)
                         puts("\nUse command line option --tags or --tagfile to add missing tags to the database.");
                         set_color(RESET, stdout);
                     }
+
+                    if (option_tag_separator)
+                        replace_commas_in_tag(tag_release, option_tag_separator);
                 }
                 printf("\n");
                 break;

@@ -13,6 +13,7 @@ extern int option_leading_zeros;
 extern int option_online;
 extern int option_query;
 extern int option_recursive;
+extern char *option_tag_separator;
 extern int option_underscores;
 extern int option_verbose;
 extern int option_yes_to_all;

@@ -19,6 +19,7 @@ int option_online;
 int option_override_tags;
 int option_query;
 int option_recursive;
+char *option_tag_separator;
 int option_underscores;
 int option_verbose;
 int option_yes_to_all;
@@ -57,6 +58,7 @@ static struct option opts[] = {
     { OPT_SET_TYPE,       "set-type",       "CATEGORIES", "Set %type% mapping to comma-separated string CATEGORIES (see section \"Pattern variables\")." },
     { OPT_TAGFILE,        "tagfile",        "FILE",    "Load additional %release% tags from text file FILE, one tag per line." },
     { OPT_TAGS,           "tags",           "TAGS",    "Load additional %release% tags from comma-separated string TAGS (no spaces before or after commas)." },
+    { OPT_TAG_SEPARATOR,  "tag-separator",  "SEP",     "Use the string SEP instead of commas to separate multiple release tags." },
     { 'u',                "underscores",    NULL,      "Use underscores instead of spaces in file names." },
     { 'v',                "verbose",        NULL,      "Display additional infos." },
     { OPT_VERSION,        "version",        NULL,      "Print the current pkgrename version." },
@@ -66,7 +68,7 @@ static struct option opts[] = {
 
 void print_version(void)
 {
-    printf("Version 1.08a, build date: %s\n", __DATE__);
+    printf("Version 1.08b BETA, build date: %s\n", __DATE__);
     printf("Get the latest version at "
         "\"%s\".\n", HOMEPAGE_LINK);
     printf("Report bugs, request features, or add missing tags at "
@@ -338,6 +340,9 @@ void parse_options(int *argc, char **argv[])
                 break;
             case OPT_TAGS:
                 optf_tags(optarg);
+                break;
+            case OPT_TAG_SEPARATOR:
+                option_tag_separator = optarg;
                 break;
             case 'u':
                 option_underscores = 1;
