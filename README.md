@@ -70,7 +70,7 @@ The program's help screen ("pkgrename --help"):
       (***) A checksum that indicates whether game and update PKGs that have the
       same Title ID are compatible with each other ("married"). This pattern
       variable will be empty for PKGs of other types.
-      
+    
       (****) %type% is %category% mapped to "Game,Update,DLC,App,Other".
       These 5 default strings can be changed via option "--set-type", e.g.:
         --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
@@ -153,6 +153,8 @@ The program's help screen ("pkgrename --help"):
                                  one tag per line.
           --tags TAGS            Load additional %release% tags from comma-separated
                                  string TAGS (no spaces before or after commas).
+          --tag-separator SEP    Use the string SEP instead of commas to separate
+                                 multiple release tags.
       -u, --underscores          Use underscores instead of spaces in file names.
       -v, --verbose              Display additional infos.
           --version              Print the current pkgrename version.
