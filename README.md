@@ -130,6 +130,9 @@ The program's help screen ("pkgrename --help"):
           --disable-colors       Disable colored text output.
       -f, --force                Force-prompt even when file names match.
       -h, --help                 Print this help screen.
+      -l, --language LANG        If the PKG supports it, use the language specified
+                                 by language code LANG (see --print-languages) to
+                                 retrieve the PKG's title.
       -0, --leading-zeros        Show leading zeros in pattern variables %app_ver%,
                                  %firmware%, %merged_ver%, %sdk%, %true_ver%,
                                  %version%.
@@ -142,6 +145,7 @@ The program's help screen ("pkgrename --help"):
                                  existing file name tags.
       -p, --pattern PATTERN      Set the file name pattern to string PATTERN.
           --placeholder X        Set the placeholder character to X.
+          --print-languages      Print available language codes.
           --print-tags           Print all built-in release tags.
       -q, --query                For scripts/tools: print file name suggestions, one
                                  per line, without renaming the files. A successful
@@ -159,6 +163,7 @@ The program's help screen ("pkgrename --help"):
       -v, --verbose              Display additional infos.
           --version              Print the current pkgrename version.
       -y, --yes-to-all           Do not prompt; rename all files automatically.
+
 
 ## Tagging
 
