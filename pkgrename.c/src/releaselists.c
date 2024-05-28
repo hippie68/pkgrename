@@ -108,8 +108,8 @@ char *get_release_group(char *string)
     while (p->name != NULL) {
         if (strwrd(string, p->name))
             return p->name;
-        if (p->alt_name != NULL && strwrd(string, p->alt_name))
-            return p->alt_name;
+        if (p->alt_name != NULL && strstr(string, p->alt_name))
+            return p->name;
         p++;
     }
 
