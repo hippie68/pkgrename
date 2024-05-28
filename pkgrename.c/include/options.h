@@ -9,6 +9,7 @@ extern int option_force_backup;
 extern int option_mixed_case;
 extern int option_no_placeholder;
 extern int option_no_to_all;
+extern char option_language_number[3];
 extern int option_leading_zeros;
 extern int option_online;
 extern int option_query;

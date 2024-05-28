@@ -14,6 +14,7 @@ int option_force_backup;
 int option_mixed_case;
 int option_no_placeholder;
 int option_no_to_all;
+char option_language_number[3];
 int option_leading_zeros;
 int option_online;
 int option_override_tags;
@@ -29,6 +30,7 @@ enum long_only_options {
     OPT_NO_PLACEHOLDER,
     OPT_OVERRIDE_TAGS,
     OPT_PLACEHOLDER,
+    OPT_PRINT_LANGS,
     OPT_PRINT_TAGS,
     OPT_SET_TYPE,
     OPT_TAGFILE,
@@ -44,6 +46,7 @@ static struct option opts[] = {
 #endif
     { 'f',                "force",          NULL,      "Force-prompt even when file names match." },
     { 'h',                "help",           NULL,      "Print this help screen." },
+    { 'l',                "language",       "LANG",    "If the PKG supports it, use the language specified by language code LANG (see --print-languages) to retrieve the PKG's title." },
     { '0',                "leading-zeros",  NULL,      "Show leading zeros in pattern variables %app_ver%, %firmware%, %merged_ver%, %sdk%, %true_ver%, %version%." },
     { 'm',                "mixed-case",     NULL,      "Automatically apply mixed-case letter style." },
     { OPT_NO_PLACEHOLDER, "no-placeholder", NULL,      "Hide characters instead of using placeholders." },
@@ -52,6 +55,7 @@ static struct option opts[] = {
     { OPT_OVERRIDE_TAGS,  "override-tags",  NULL,      "Make changelog release tags take precedence over existing file name tags." },
     { 'p',                "pattern",        "PATTERN", "Set the file name pattern to string PATTERN." },
     { OPT_PLACEHOLDER,    "placeholder",    "X",       "Set the placeholder character to X." },
+    { OPT_PRINT_LANGS,    "print-languages", NULL,     "Print available language codes." },
     { OPT_PRINT_TAGS,     "print-tags",     NULL,      "Print all built-in release tags." },
     { 'q',                "query",          NULL,      "For scripts/tools: print file name suggestions, one per line, without renaming the files. A successful query returns exit code 0." },
     { 'r',                "recursive",      NULL,      "Traverse subdirectories recursively." },
@@ -209,6 +213,60 @@ static inline void optf_pattern(char *pattern)
     strcpy(format_string, pattern);
 }
 
+struct lang {
+    unsigned char number;
+    char *name;
+    char *identifier;
+};
+
+static struct lang langs[] = {
+    { 0, "Japanese", "jp" },
+    { 1, "English (United States)", "en" },
+    { 2, "French (France)", "fr" },
+    { 3, "Spanish (Spain)", "es" },
+    { 4, "German", "de" },
+    { 5, "Italian", "it" },
+    { 6, "Dutch", "nl" },
+    { 7, "Portuguese (Portugal)", "pt" },
+    { 8, "Russian", "ru" },
+    { 9, "Korean", "ko" },
+    { 10, "Traditional Chinese", "zh_t" },
+    { 11, "Simplified Chinese", "zh_s" },
+    { 12, "Finnish", "fi" },
+    { 13, "Swedish", "sv" },
+    { 14, "Danish", "da" },
+    { 15, "Norwegian", "no" },
+    { 16, "Polish", "pl" },
+    { 17, "Portuguese (Brazil)", "pt-br" },
+    { 18, "English (United Kingdom)", "en-gb" },
+    { 19, "Turkish", "tr" },
+    { 20, "Spanish (Latin America)", "es-la" },
+    { 21, "Arabic", "ar" },
+    { 22, "French (Canada)", "fr-ca" },
+    { 23, "Czech", "cs" },
+    { 24, "Hungarian", "hu" },
+    { 25, "Greek", "el" },
+    { 26, "Romanian", "ro" },
+    { 27, "Thai", "th" },
+    { 28, "Vietnamese", "vi" },
+    { 29, "Indonesian", "in" },
+};
+
+static int compar_lang(const void *l1, const void *l2)
+{
+    return strcmp(((struct lang *) l1)->name, ((struct lang *) l2)->name);
+}
+
+static inline void optf_print_languages(void)
+{
+    qsort(langs, sizeof(langs) / sizeof(langs[0]), sizeof(langs[0]),
+            compar_lang);
+    printf("ID\tLanguage\n\n");
+    for (size_t i = 0; i < sizeof(langs) / sizeof(struct lang); i++) {
+        printf("%s\t%s\n", langs[i].identifier, langs[i].name);
+    }
+}
+
 static inline void optf_set_type(char *argument)
 {
     // Exit if wrong number of arguments
@@ -297,6 +355,21 @@ void parse_options(int *argc, char **argv[])
             case 'h':
                 print_usage();
                 exit(EXIT_SUCCESS);
+            case 'l':
+                for (size_t i = 0; i < sizeof(langs) / sizeof(langs[0]); i++) {
+                    if (strcmp(optarg, langs[i].identifier) == 0) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+                        snprintf(option_language_number, 3, "%02d", langs[i].number);
+#pragma GCC diagnostic pop
+                        goto language_found;
+                    }
+                }
+
+                fprintf(stderr, "Unknown language ID: %s\n", optarg);
+                exit(EXIT_FAILURE);
+language_found:
+                break;
             case '0':
                 option_leading_zeros = 1;
                 break;
@@ -321,6 +394,9 @@ void parse_options(int *argc, char **argv[])
             case OPT_PLACEHOLDER:
                 placeholder_char = optarg[0];
                 break;
+            case OPT_PRINT_LANGS:
+                optf_print_languages();
+                exit(EXIT_SUCCESS);
             case OPT_PRINT_TAGS:
                 ;
                 extern void print_database();

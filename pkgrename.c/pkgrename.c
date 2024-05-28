@@ -325,8 +325,16 @@ static struct scan *pkgrename(struct scan *scan)
         }
     }
     // TITLE
+    if (option_language_number[0] != '\0') {
+        char query[9];
+        snprintf(query, sizeof(query), "TITLE_%s", option_language_number);
+        title_backup = (char *) get_param_sfo_value(param_sfo, query);
+        if (title_backup)
+            goto title_found;
+    }
     title_backup = (char *) get_param_sfo_value(param_sfo, "TITLE");
     if (title_backup) {
+title_found:
         strncpy(title, title_backup, MAX_TITLE_LEN);
         title[MAX_TITLE_LEN - 1] = '\0';
     }
