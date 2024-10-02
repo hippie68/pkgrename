@@ -8,6 +8,7 @@ struct scan {
     char *filename;
     unsigned char *param_sfo;
     char *changelog;
+    _Bool fake_status;
     _Bool filename_allocated;
     enum {
         SCAN_ERROR_OPEN_FILE = 1,

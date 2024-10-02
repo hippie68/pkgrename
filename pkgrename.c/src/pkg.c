@@ -1,6 +1,8 @@
+#include "../include/checksums.h"
 #include "../include/common.h"
 #include "../include/pkg.h"
 #include "../include/scan.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,10 +85,59 @@ static int check_param_sfo(const unsigned char *param_sfo_buf, size_t buf_size)
     return 0;
 }
 
+static unsigned char *gen_key(char *content_id, char *passcode,
+    int index)
+{
+    unsigned char index_buf[4] = { 0, 0, 0, index };
+    unsigned char content_id_buf[48] = { 0 };
+    memcpy(content_id_buf, content_id, strlen(content_id));
+
+    unsigned char *checksum1 = checksum_buf(EVP_sha256, index_buf, 4);
+    /* print_checksum(stdout, checksum1, EVP_sha256); */
+    /* printf("\n"); */
+    unsigned char *checksum2 = checksum_buf(EVP_sha256, content_id_buf, 48);
+    /* print_checksum(stdout, checksum2, EVP_sha256); */
+    /* printf("\n"); */
+
+    unsigned char data[96];
+    memcpy(data, checksum1, 32);
+    memcpy(data + 32, checksum2, 32);
+    memcpy(data + 64, passcode, 32);
+
+    OPENSSL_free(checksum1);
+    OPENSSL_free(checksum2);
+
+    return checksum_buf(EVP_sha256, data, 96);
+}
+
+static _Bool is_fake(char *content_id, unsigned char key_checksum[32])
+{
+    static char *passcode = "00000000000000000000000000000000";
+
+    unsigned char *key = gen_key(content_id, passcode, 0);
+    unsigned char *checksum = checksum_buf(EVP_sha256, key, 32);
+    for (int i = 0; i < 32; i++)
+        checksum[i] = key[i] ^ checksum[i];
+    OPENSSL_free(key);
+
+    // Debug
+    /* print_checksum(stdout, key_checksum, EVP_sha256); */
+    /* print_checksum(stdout, checksum, EVP_sha256); */
+    /* printf("\n"); */
+
+    int ret = memcmp(checksum, key_checksum, 32);
+
+    OPENSSL_free(checksum);
+
+    if (ret)
+        return false;
+    return true;
+}
+
 // Loads PKG data into dynamically allocated buffers and passes their pointers.
 // Returns 0 on success and -1 on error.
 int load_pkg_data(unsigned char **param_sfo, char **changelog,
-    const char *filename)
+    _Bool *fake_status, const char *filename)
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wscalar-storage-order"
@@ -105,8 +156,9 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
     }
 
     // Get offsets and file sizes first, not to drop read-ahead cache.
-    uint32_t param_sfo_offset, param_sfo_size, changelog_offset,
+    uint32_t param_sfo_offset, param_sfo_size, changelog_offset, keys_offset,
         changelog_size;
+    int keys_offset_found = 0;
     int param_sfo_found = 0;
     int changelog_found = 0;
     if (fseek(file, pkg_header.table_offset, SEEK_SET))
@@ -116,7 +168,10 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
         if (fread(&entry, sizeof(entry), 1, file) != 1)
             goto read_error;
 
-        if (entry.id == 0x00001000) { // param.sfo
+        if (entry.id == 0x10) {
+            keys_offset = entry.offset;
+            keys_offset_found = 1;
+        } else if (entry.id == 0x1000) { // param.sfo
             param_sfo_offset = entry.offset;
             if (entry.size > MAX_SIZE_PARAM_SFO) {
                 retval = SCAN_ERROR_PARAM_SFO_INVALID_SIZE;
@@ -124,7 +179,7 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
             }
             param_sfo_size = entry.size;
             param_sfo_found = 1;
-        } else if (entry.id == 0x00001260) { // changeinfo.xml
+        } else if (entry.id == 0x1260) { // changeinfo.xml
             changelog_offset = entry.offset;
             if (entry.size > MAX_SIZE_CHANGELOG) {
                 retval = SCAN_ERROR_CHANGELOG_INVALID_SIZE;
@@ -187,6 +242,24 @@ int load_pkg_data(unsigned char **param_sfo, char **changelog,
         *changelog = changelog_buf;
     } else {
         *changelog = NULL;
+    }
+
+    // Check for FPKG.
+    if (keys_offset_found) {
+        if (fseek(file, keys_offset + 32, SEEK_SET))
+            goto read_error;
+
+        unsigned char key_checksum[32];
+        if (fread(key_checksum, 32, 1, file) != 1)
+            goto read_error;
+
+        char *content_id = get_param_sfo_value(*param_sfo, "CONTENT_ID");
+        if (content_id == NULL) {
+            retval = SCAN_ERROR_PARAM_SFO_INVALID_DATA;
+            goto error;
+        }
+
+        *fake_status = is_fake(content_id, key_checksum);
     }
 
     fclose(file);

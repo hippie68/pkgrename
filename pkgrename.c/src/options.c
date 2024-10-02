@@ -72,7 +72,7 @@ static struct option opts[] = {
 
 void print_version(void)
 {
-    printf("Version 1.08b BETA, build date: %s\n", __DATE__);
+    printf("Version 1.09 BETA, build date: %s\n", __DATE__);
     printf("Get the latest version at "
         "\"%s\".\n", HOMEPAGE_LINK);
     printf("Report bugs, request features, or add missing tags at "
@@ -117,48 +117,56 @@ void print_usage(void)
         "  ----------------------------------------------------------------------\n"
         "  %app%            \"App\"\n"
         "  %app_ver%        \"4.03\"\n"
-        "  %backport%       \"Backport\" (*)\n"
+        "  %backport%       \"Backport\" (1)\n"
         "  %category%       \"gp\"\n"
         "  %content_id%     \"EP4497-CUSA05571_00-00000000000GOTY1\"\n"
         "  %dlc%            \"DLC\"\n"
+        "  %fake%           \"Fake\" (5)\n"
+        "  %fake_status%    \"Fake\" (5)\n"
         "  %file_id%        \"EP4497-CUSA05571_00-00000000000GOTY1-A0403-V0100\"\n"
         "  %firmware%       \"10.01\"\n"
         "  %game%           \"Game\"\n"
-        "  %merged_ver%     \"\" (**)\n"
-        "  %msum%           \"3E57B0\" (***)\n"
+        "  %merged_ver%     \"\" (2)\n"
+        "  %msum%           \"3E57B0\" (3)\n"
         "  %other%          \"Other\"\n"
         "  %patch%          \"Update\"\n"
         "  %region%         \"EU\"\n"
-        "  %release_group%  \"PRELUDE\" (*)\n"
-        "  %release%        \"John Doe\" (*)\n"
+        "  %release_group%  \"PRELUDE\" (1)\n"
+        "  %release%        \"John Doe\" (1)\n"
+        "  %retail%         \"\" (5)\n"
         "  %sdk%            \"4.50\"\n"
         "  %size%           \"19.34 GiB\"\n"
         "  %title%          \"The Witcher 3: Wild Hunt – Game of the Year Edition\"\n"
         "  %title_id%       \"CUSA05571\"\n"
-        "  %true_ver%       \"4.03\" (**)\n"
-        "  %type%           \"Update\" (****)\n"
+        "  %true_ver%       \"4.03\" (2)\n"
+        "  %type%           \"Update\" (4)\n"
         "  %version%        \"1.00\"\n"
         "\n"
-        "  (*) Backports not targeting 5.05 are detected by searching file names for the\n"
+        "  (1) Backports not targeting 5.05 are detected by searching file names for the\n"
         "  words \"BP\" and \"Backport\" (case-insensitive). The same principle applies to\n"
         "  release groups and releases.\n"
         "\n"
-        "  (**) Patches and apps merged with patches are detected by searching PKG files\n"
+        "  (2) Patches and apps merged with patches are detected by searching PKG files\n"
         "  for changelog information. If a patch is found, both %merged_ver% and\n"
         "  %true_ver% are the patch version. If no patch is found or if patch detection\n"
         "  is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.\n"
         "  %merged_ver% is always empty for non-app PKGs.\n"
         "\n"
-        "  (***) A checksum that indicates whether game and update PKGs that have the\n"
+        "  (3) A checksum that indicates whether game and update PKGs that have the\n"
         "  same Title ID are compatible with each other (\"married\"). This pattern\n"
         "  variable will be empty for PKGs of other types.\n"
         "\n"
-        "  (****) %type% is %category% mapped to \"Game,Update,DLC,App,Other\".\n"
-        "  These 5 default strings can be changed via option \"--set-type\", e.g.:\n"
+        "  (4) %type% is %category% mapped to \"Game,Update,DLC,App,Other\".\n"
+        "  These five default strings can be changed via option \"--set-type\", e.g.:\n"
         "    --set-type \"Game,Patch %app_ver%,DLC,-,-\" (no spaces before or after commas)\n"
         "  Each string must have a value. To hide a category, use the value \"-\".\n"
         "  %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding\n"
         "  %type% values. They will be displayed if the PKG is of that specific category.\n"
+        "\n"
+        "  (5) These pattern variables depend on the type of the PKG:\n"
+        "  PKG type           %fake%   %retail%  %fake_status%\n"
+        "  \"Fake\" PKG (FPKG)  Fake     <empty>   Fake\n"
+        "  Retail PKG         <empty>  Retail    Retail\n"
         "\n"
         "  After parsing, empty pairs of brackets, empty pairs of parentheses, and any\n"
         "  remaining curly braces (\"[]\", \"()\", \"{\", \"}\") will be removed.\n"
@@ -213,13 +221,11 @@ static inline void optf_pattern(char *pattern)
     strcpy(format_string, pattern);
 }
 
-struct lang {
+static struct lang {
     unsigned char number;
     char *name;
     char *identifier;
-};
-
-static struct lang langs[] = {
+} langs[] = {
     { 0, "Japanese", "jp" },
     { 1, "English (United States)", "en" },
     { 2, "French (France)", "fr" },
@@ -230,8 +236,8 @@ static struct lang langs[] = {
     { 7, "Portuguese (Portugal)", "pt" },
     { 8, "Russian", "ru" },
     { 9, "Korean", "ko" },
-    { 10, "Traditional Chinese", "zh_t" },
-    { 11, "Simplified Chinese", "zh_s" },
+    { 10, "Chinese (traditional)", "zh_t" },
+    { 11, "Chinese (simplified)", "zh_s" },
     { 12, "Finnish", "fi" },
     { 13, "Swedish", "sv" },
     { 14, "Danish", "da" },
@@ -261,7 +267,7 @@ static inline void optf_print_languages(void)
 {
     qsort(langs, sizeof(langs) / sizeof(langs[0]), sizeof(langs[0]),
             compar_lang);
-    printf("ID\tLanguage\n\n");
+    printf("Code\tLanguage\n\n");
     for (size_t i = 0; i < sizeof(langs) / sizeof(struct lang); i++) {
         printf("%s\t%s\n", langs[i].identifier, langs[i].name);
     }
@@ -366,7 +372,7 @@ void parse_options(int *argc, char **argv[])
                     }
                 }
 
-                fprintf(stderr, "Unknown language ID: %s\n", optarg);
+                fprintf(stderr, "Unknown language code: %s\n", optarg);
                 exit(EXIT_FAILURE);
 language_found:
                 break;

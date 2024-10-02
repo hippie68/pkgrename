@@ -138,7 +138,8 @@ void add_scan_result(struct scan_job *job, char *filename,
     scan->filename_allocated = filename_allocated;
     scan->param_sfo = NULL;
     scan->changelog = NULL;
-    scan->error = load_pkg_data(&scan->param_sfo, &scan->changelog, filename);
+    scan->error = load_pkg_data(&scan->param_sfo, &scan->changelog,
+        &scan->fake_status, filename);
     scan->next = NULL;
 
     // Link new node.
