@@ -24,146 +24,155 @@ The program in action looks like this:
 
 The program's help screen ("pkgrename --help"):
 
-    Usage: pkgrename [OPTIONS] [FILE|DIRECTORY ...]
-    
-    Renames PS4 PKGs to match a file name pattern. The default pattern is:
-    "%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
-    
-    Pattern variables:
-    ------------------
-      Name             Example
-      ----------------------------------------------------------------------
-      %app%            "App"
-      %app_ver%        "4.03"
-      %backport%       "Backport" (*)
-      %category%       "gp"
-      %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
-      %dlc%            "DLC"
-      %file_id%        "EP4497-CUSA05571_00-00000000000GOTY1-A0403-V0100"
-      %firmware%       "10.01"
-      %game%           "Game"
-      %merged_ver%     "" (**)
-      %msum%           "3E57B0" (***)
-      %other%          "Other"
-      %patch%          "Update"
-      %region%         "EU"
-      %release_group%  "PRELUDE" (*)
-      %release%        "John Doe" (*)
-      %sdk%            "4.50"
-      %size%           "19.34 GiB"
-      %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
-      %title_id%       "CUSA05571"
-      %true_ver%       "4.03" (**)
-      %type%           "Update" (****)
-      %version%        "1.00"
-    
-      (*) Backports not targeting 5.05 are detected by searching file names for the
-      words "BP" and "Backport" (case-insensitive). The same principle applies to
-      release groups and releases.
-    
-      (**) Patches and apps merged with patches are detected by searching PKG files
-      for changelog information. If a patch is found, both %merged_ver% and
-      %true_ver% are the patch version. If no patch is found or if patch detection
-      is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
-      %merged_ver% is always empty for non-app PKGs.
-    
-      (***) A checksum that indicates whether game and update PKGs that have the
-      same Title ID are compatible with each other ("married"). This pattern
-      variable will be empty for PKGs of other types.
-    
-      (****) %type% is %category% mapped to "Game,Update,DLC,App,Other".
-      These 5 default strings can be changed via option "--set-type", e.g.:
-        --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
-      Each string must have a value. To hide a category, use the value "-".
-      %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
-      %type% values. They will be displayed if the PKG is of that specific category.
-    
-      After parsing, empty pairs of brackets, empty pairs of parentheses, and any
-      remaining curly braces ("[]", "()", "{", "}") will be removed.
-    
-    Curly braces expressions:
-    -------------------------
-      Pattern variables and other strings can be grouped together by surrounding
-      them with curly braces. If an inner pattern variable turns out to be empty,
-      the whole curly braces expression will be removed.
-    
-      Example 1 - %firmware% is empty:
-        "%title% [FW %firmware%]"   => "Example DLC [FW ].pkg"  WRONG
-        "%title% [{FW %firmware%}]" => "Example DLC.pkg"        CORRECT
-    
-      Example 2 - %firmware% has a value:
-        "%title% [{FW %firmware%}]" => "Example Game [FW 7.55].pkg"
-    
-    Handling of special characters:
-    -------------------------------
-      - For exFAT compatibility, some characters are replaced by a placeholder
-        character (default: underscore).
-      - Some special characters like copyright symbols are automatically removed
-        or replaced by more common alternatives.
-      - Numbers appearing in parentheses behind a file name indicate the presence
-        of non-ASCII characters.
-    
-    Interactive prompt:
-    -------------------
-      - [Y]es      Rename the file as seen.
-      - [N]o       Skip the file and drop all changes.
-      - [A]ll      Same as yes, but also for all future files.
-      - [E]dit     Prompt to manually edit the title.
-      - [T]ag      Prompt to enter a release group or a release.
-      - [M]ix      Convert the letter case to mixed-case style.
-      - [O]nline   Search the PS Store online for title information.
-      - [R]eset    Undo all changes.
-      - [C]hars    Reveal special characters in the title.
-      - [S]FO      Show file's param.sfo information.
-      - [L]og      Print existing changelog data.
-      - [H]elp     Print help.
-      - [Q]uit     Exit the program.
-      - [B]        Toggle the "Backport" tag.
-      - [P]        Toggle changelog patch detection for the current PKG.
-      - Shift-[T]  Remove all release tags.
-      - Backspace  Go back to the previous PKG.
-      - Space      Return to the current PKG.
-    
-    Options:
-    --------
-      -c, --compact              Hide files that are already renamed.
-          --disable-colors       Disable colored text output.
-      -f, --force                Force-prompt even when file names match.
-      -h, --help                 Print this help screen.
-      -l, --language LANG        If the PKG supports it, use the language specified
-                                 by language code LANG (see --print-languages) to
-                                 retrieve the PKG's title.
-      -0, --leading-zeros        Show leading zeros in pattern variables %app_ver%,
-                                 %firmware%, %merged_ver%, %sdk%, %true_ver%,
-                                 %version%.
-      -m, --mixed-case           Automatically apply mixed-case letter style.
-          --no-placeholder       Hide characters instead of using placeholders.
-      -n, --no-to-all            Do not prompt; do not actually rename any files.
-                                 This can be used to do a test run.
-      -o, --online               Automatically search online for %title%.
-          --override-tags        Make changelog release tags take precedence over
-                                 existing file name tags.
-      -p, --pattern PATTERN      Set the file name pattern to string PATTERN.
-          --placeholder X        Set the placeholder character to X.
-          --print-languages      Print available language codes.
-          --print-tags           Print all built-in release tags.
-      -q, --query                For scripts/tools: print file name suggestions, one
-                                 per line, without renaming the files. A successful
-                                 query returns exit code 0.
-      -r, --recursive            Traverse subdirectories recursively.
-          --set-type CATEGORIES  Set %type% mapping to comma-separated string
-                                 CATEGORIES (see section "Pattern variables").
-          --tagfile FILE         Load additional %release% tags from text file FILE,
-                                 one tag per line.
-          --tags TAGS            Load additional %release% tags from comma-separated
-                                 string TAGS (no spaces before or after commas).
-          --tag-separator SEP    Use the string SEP instead of commas to separate
-                                 multiple release tags.
-      -u, --underscores          Use underscores instead of spaces in file names.
-      -v, --verbose              Display additional infos.
-          --version              Print the current pkgrename version.
-      -y, --yes-to-all           Do not prompt; rename all files automatically.
+```
+Usage: pkgrename [OPTIONS] [FILE|DIRECTORY ...]
 
+Renames PS4 PKGs to match a file name pattern. The default pattern is:
+"%title% [%dlc%] [{v%app_ver%}{ + v%merged_ver%}] [%title_id%] [%release_group%] [%release%] [%backport%]"
+
+Pattern variables:
+------------------
+  Name             Example
+  ----------------------------------------------------------------------
+  %app%            "App"
+  %app_ver%        "4.03"
+  %backport%       "Backport" (1)
+  %category%       "gp"
+  %content_id%     "EP4497-CUSA05571_00-00000000000GOTY1"
+  %dlc%            "DLC"
+  %fake%           "Fake" (5)
+  %fake_status%    "Fake" (5)
+  %file_id%        "EP4497-CUSA05571_00-00000000000GOTY1-A0403-V0100"
+  %firmware%       "10.01"
+  %game%           "Game"
+  %merged_ver%     "" (2)
+  %msum%           "3E57B0" (3)
+  %other%          "Other"
+  %patch%          "Update"
+  %region%         "EU"
+  %release_group%  "PRELUDE" (1)
+  %release%        "John Doe" (1)
+  %retail%         "" (5)
+  %sdk%            "4.50"
+  %size%           "19.34 GiB"
+  %title%          "The Witcher 3: Wild Hunt – Game of the Year Edition"
+  %title_id%       "CUSA05571"
+  %true_ver%       "4.03" (2)
+  %type%           "Update" (4)
+  %version%        "1.00"
+
+  (1) Backports not targeting 5.05 are detected by searching file names for the
+  words "BP" and "Backport" (case-insensitive). The same principle applies to
+  release groups and releases.
+
+  (2) Patches and apps merged with patches are detected by searching PKG files
+  for changelog information. If a patch is found, both %merged_ver% and
+  %true_ver% are the patch version. If no patch is found or if patch detection
+  is disabled (command [P]), %merged_ver% is empty and %true_ver% is %app_ver%.
+  %merged_ver% is always empty for non-app PKGs.
+
+  (3) A checksum that indicates whether game and update PKGs that have the
+  same Title ID are compatible with each other ("married"). This pattern
+  variable will be empty for PKGs of other types.
+
+  (4) %type% is %category% mapped to "Game,Update,DLC,App,Other".
+  These five default strings can be changed via option "--set-type", e.g.:
+    --set-type "Game,Patch %app_ver%,DLC,-,-" (no spaces before or after commas)
+  Each string must have a value. To hide a category, use the value "-".
+  %app%, %dlc%, %game%, %other%, and %patch% are mapped to their corresponding
+  %type% values. They will be displayed if the PKG is of that specific category.
+
+  (5) These pattern variables depend on the type of the PKG:
+  PKG type           %fake%   %retail%  %fake_status%
+  "Fake" PKG (FPKG)  Fake     <empty>   Fake
+  Retail PKG         <empty>  Retail    Retail
+
+  After parsing, empty pairs of brackets, empty pairs of parentheses, and any
+  remaining curly braces ("[]", "()", "{", "}") will be removed.
+
+Curly braces expressions:
+-------------------------
+  Pattern variables and other strings can be grouped together by surrounding
+  them with curly braces. If an inner pattern variable turns out to be empty,
+  the whole curly braces expression will be removed.
+
+  Example 1 - %firmware% is empty:
+    "%title% [FW %firmware%]"   => "Example DLC [FW ].pkg"  WRONG
+    "%title% [{FW %firmware%}]" => "Example DLC.pkg"        CORRECT
+
+  Example 2 - %firmware% has a value:
+    "%title% [{FW %firmware%}]" => "Example Game [FW 7.55].pkg"
+
+Handling of special characters:
+-------------------------------
+  - For exFAT compatibility, some characters are replaced by a placeholder
+    character (default: underscore).
+  - Some special characters like copyright symbols are automatically removed
+    or replaced by more common alternatives.
+  - Numbers appearing in parentheses behind a file name indicate the presence
+    of non-ASCII characters.
+
+Interactive prompt:
+-------------------
+  - [Y]es      Rename the file as seen.
+  - [N]o       Skip the file and drop all changes.
+  - [A]ll      Same as yes, but also for all future files.
+  - [E]dit     Prompt to manually edit the title.
+  - [T]ag      Prompt to enter a release group or a release.
+  - [M]ix      Convert the letter case to mixed-case style.
+  - [O]nline   Search the PS Store online for title information.
+  - [R]eset    Undo all changes.
+  - [C]hars    Reveal special characters in the title.
+  - [S]FO      Show file's param.sfo information.
+  - [L]og      Print existing changelog data.
+  - [H]elp     Print help.
+  - [Q]uit     Exit the program.
+  - [B]        Toggle the "Backport" tag.
+  - [P]        Toggle changelog patch detection for the current PKG.
+  - Shift-[T]  Remove all release tags.
+  - Backspace  Go back to the previous PKG.
+  - Space      Return to the current PKG.
+
+Options:
+--------
+  -c, --compact              Hide files that are already renamed.
+      --disable-colors       Disable colored text output.
+  -f, --force                Force-prompt even when file names match.
+  -h, --help                 Print this help screen.
+  -l, --language LANG        If the PKG supports it, use the language specified
+                             by language code LANG (see --print-languages) to
+                             retrieve the PKG's title.
+  -0, --leading-zeros        Show leading zeros in pattern variables %app_ver%,
+                             %firmware%, %merged_ver%, %sdk%, %true_ver%,
+                             %version%.
+  -m, --mixed-case           Automatically apply mixed-case letter style.
+      --no-placeholder       Hide characters instead of using placeholders.
+  -n, --no-to-all            Do not prompt; do not actually rename any files.
+                             This can be used to do a test run.
+  -o, --online               Automatically search online for %title%.
+      --override-tags        Make changelog release tags take precedence over
+                             existing file name tags.
+  -p, --pattern PATTERN      Set the file name pattern to string PATTERN.
+      --placeholder X        Set the placeholder character to X.
+      --print-languages      Print available language codes.
+      --print-tags           Print all built-in release tags.
+  -q, --query                For scripts/tools: print file name suggestions, one
+                             per line, without renaming the files. A successful
+                             query returns exit code 0.
+  -r, --recursive            Traverse subdirectories recursively.
+      --set-type CATEGORIES  Set %type% mapping to comma-separated string
+                             CATEGORIES (see section "Pattern variables").
+      --tagfile FILE         Load additional %release% tags from text file FILE,
+                             one tag per line.
+      --tags TAGS            Load additional %release% tags from comma-separated
+                             string TAGS (no spaces before or after commas).
+      --tag-separator SEP    Use the string SEP instead of commas to separate
+                             multiple release tags.
+  -u, --underscores          Use underscores instead of spaces in file names.
+  -v, --verbose              Display additional infos.
+      --version              Print the current pkgrename version.
+  -y, --yes-to-all           Do not prompt; rename all files automatically.
+```
 
 ## Tagging
 
@@ -208,11 +217,11 @@ A successful query returns exit code 0. On error, the list is incomplete and a n
 
 ## How to compile...
 
-...for Linux/Unix (requires libcurl development files):
+...for Linux/Unix (requires libcurl and OpenSSL development files):
 
-    gcc -Wall -Wextra --pedantic pkgrename.c src/*.c -o pkgrename -lcurl -pthread -s -O3
+    gcc -Wall -Wextra --pedantic pkgrename.c src/*.c -o pkgrename -lcrypto -lcurl -pthread -s -O3
 
-...for Windows:
+...for Windows (not working anymore for the current code; stay tuned):
 
     x86_64-w64-mingw32-gcc-win32 -Wall -Wextra -pedantic pkgrename.c src/*.c -o pkgrename.exe --static -pthread -s -O3
 
