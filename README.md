@@ -160,6 +160,10 @@ Options:
                              per line, without renaming the files. A successful
                              query returns exit code 0.
   -r, --recursive            Traverse subdirectories recursively.
+      --set-backport STRING  Set %backport% mapping to STRING.
+      --set-fake STRINGS     Set %fake%, %fake_status%, and %retail% mappings to
+                             two comma-separated STRINGS. The first string
+                             replaces %fake%, the second one %retail%.
       --set-type CATEGORIES  Set %type% mapping to comma-separated string
                              CATEGORIES (see section "Pattern variables").
       --tagfile FILE         Load additional %release% tags from text file FILE,
@@ -217,13 +221,13 @@ A successful query returns exit code 0. On error, the list is incomplete and a n
 
 ## How to compile...
 
-...for Linux/Unix (requires libcurl and OpenSSL development files):
+...for Linux/Unix (requires libcurl development headers; for Debian-based distros "libcurl4-xxx-dev"):
 
-    gcc -Wall -Wextra --pedantic pkgrename.c src/*.c -o pkgrename -lcrypto -lcurl -pthread -s -O3
+    gcc -Wall -Wextra -pedantic pkgrename.c src/*.c -o pkgrename -lcurl -pthread -s -O3
 
-...for Windows (not working anymore for the current code; stay tuned):
+...for Windows:
 
-    x86_64-w64-mingw32-gcc-win32 -Wall -Wextra -pedantic pkgrename.c src/*.c -o pkgrename.exe --static -pthread -s -O3
+    x86_64-w64-mingw32-gcc-win32 -Wall -Wextra -pedantic pkgrename.c src/*.c -o pkgrename.exe -static -pthread -s -O3
 
 Or download a compiled Windows release at https://github.com/hippie68/pkgrename/releases.
 
