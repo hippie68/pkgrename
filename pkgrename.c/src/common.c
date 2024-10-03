@@ -4,6 +4,9 @@
 #include <stdlib.h>
 
 char *tag_separator = ",";
+char *BACKPORT_STRING = "Backport";
+char *FAKE_STRING = "Fake";
+char *RETAIL_STRING = "Retail";
 
 void exit_err(int err, const char *function_name, int line)
 {

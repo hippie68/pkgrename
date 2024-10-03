@@ -26,7 +26,10 @@ struct custom_category {
     char *other;
 };
 
+extern char *BACKPORT_STRING;
 extern struct custom_category custom_category;
+extern char *FAKE_STRING;
+extern char *RETAIL_STRING;
 extern char format_string[MAX_FORMAT_STRING_LEN];
 extern char placeholder_char;
 extern char *tags[MAX_TAGS];

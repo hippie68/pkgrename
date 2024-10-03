@@ -32,6 +32,8 @@ enum long_only_options {
     OPT_PLACEHOLDER,
     OPT_PRINT_LANGS,
     OPT_PRINT_TAGS,
+    OPT_SET_BACKPORT,
+    OPT_SET_FAKE,
     OPT_SET_TYPE,
     OPT_TAGFILE,
     OPT_TAGS,
@@ -59,6 +61,8 @@ static struct option opts[] = {
     { OPT_PRINT_TAGS,     "print-tags",     NULL,      "Print all built-in release tags." },
     { 'q',                "query",          NULL,      "For scripts/tools: print file name suggestions, one per line, without renaming the files. A successful query returns exit code 0." },
     { 'r',                "recursive",      NULL,      "Traverse subdirectories recursively." },
+    { OPT_SET_BACKPORT,   "set-backport",   "STRING",  "Set %backport% mapping to STRING." },
+    { OPT_SET_FAKE,       "set-fake",       "STRINGS", "Set %fake%, %fake_status%, and %retail% mappings to two comma-separated STRINGS. The first string replaces %fake%, the second one %retail%." },
     { OPT_SET_TYPE,       "set-type",       "CATEGORIES", "Set %type% mapping to comma-separated string CATEGORIES (see section \"Pattern variables\")." },
     { OPT_TAGFILE,        "tagfile",        "FILE",    "Load additional %release% tags from text file FILE, one tag per line." },
     { OPT_TAGS,           "tags",           "TAGS",    "Load additional %release% tags from comma-separated string TAGS (no spaces before or after commas)." },
@@ -273,36 +277,54 @@ static inline void optf_print_languages(void)
     }
 }
 
-static inline void optf_set_type(char *argument)
+// Returns n_pieces on success and 0 on error.
+static int split_string(char *string, char *delims, char *array[], int n_pieces)
 {
-    // Exit if wrong number of arguments
-    int comma_count = 0;
-    for (size_t i = 0; i < strlen(argument); i++) {
-        if (argument[i] == ',')
-            comma_count++;
+    char *next = strtok(string, delims);
+    int i;
+    for (i = 0; i < n_pieces; i++) {
+        if (next == NULL)
+            return 0;
+
+        array[i] = next;
+        next = strtok(NULL, delims);
     }
-    if (comma_count != 4) {
-        fprintf(stderr,
-            "Option --set-type needs exactly 5 comma-separated arguments.\n");
+
+    if (next)
+        return 0;
+    return i;
+}
+
+static inline void optf_set_fake(char *arg)
+{
+    char *input[2];
+    if (split_string(arg, ",", input, 2) == 0) {
+        fprintf(stderr, "The argument to option --set-fake must consist of exactly 2 comma-separated parts.\n");
         exit(EXIT_FAILURE);
     }
 
-    // Parse arguments
-    custom_category.game = strtok(argument, ",");
-    if (strcmp(custom_category.game, "-") == 0)
-        custom_category.game = "";
-    custom_category.patch = strtok(NULL, ",");
-    if (strcmp(custom_category.patch, "-") == 0)
-        custom_category.patch = "";
-    custom_category.dlc = strtok(NULL, ",");
-    if (strcmp(custom_category.dlc, "-") == 0)
-        custom_category.dlc = "";
-    custom_category.app = strtok(NULL, ",");
-    if (strcmp(custom_category.app, "-") == 0)
-        custom_category.app = "";
-    custom_category.other = strtok(NULL, ",");
-    if (strcmp(custom_category.other, "-") == 0)
-        custom_category.other = "";
+    FAKE_STRING = input[0];
+    RETAIL_STRING = input[1];
+}
+
+static inline void optf_set_type(char *arg)
+{
+    char *input[5];
+    if (split_string(arg, ",", input, 5) == 0) {
+        fprintf(stderr,
+            "The argument to option --set-type must consist of exactly 5 comma-separated parts.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < 5; i++)
+        if (strcmp(input[i], "-") == 0)
+            input[i] = "";
+
+    custom_category.game = input[0];
+    custom_category.patch = input[1];
+    custom_category.dlc = input[2];
+    custom_category.app = input[3];
+    custom_category.other = input[4];
 }
 
 static inline void optf_tagfile(char *file_name)
@@ -413,6 +435,12 @@ language_found:
                 break;
             case 'r':
                 option_recursive = 1;
+                break;
+            case OPT_SET_BACKPORT:
+                BACKPORT_STRING = optarg;
+                break;
+            case OPT_SET_FAKE:
+                optf_set_fake(optarg);
                 break;
             case OPT_SET_TYPE:
                 optf_set_type(optarg);

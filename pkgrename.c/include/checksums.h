@@ -1,21 +1,12 @@
-// Copyright (c) 2024 hippie68
+#ifndef CHECKSUMS_H
+#define CHECKSUMS_H
 
-// Small library to generate file/buffer checksums in an easy way.
-
-#define _FILE_OFFSET_BITS 64
-
-#include <openssl/evp.h>
-
-// Note: "f" can be one of many functions provided by openssl.
-// For example: EVP_md5, EVP_sha1, ...
-// Returned checksum buffers must be freed with "OPENSSL_free()".
+#include <stdio.h>
 
 // Prints a checksum stored in a buffer to the provided file descriptor.
-// Note: The buffer's and f's checksum types must match!
-void print_checksum(FILE *stream, unsigned char *buf, const EVP_MD *(*f)(void));
-
-// Calculates a file's checksum.
-unsigned char *checksum_file(const EVP_MD *(*f)(void), char *filename, uint64_t start, uint64_t end);
+void print_checksum(FILE *stream, unsigned char *buf, size_t buf_size);
 
 // Calculates a buffer's checksum.
-unsigned char *checksum_buf(const EVP_MD *(*f)(void), unsigned char *buf, size_t bufsize);
+void sha256(void *to, void *from, size_t from_size);
+
+#endif

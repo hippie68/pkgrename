@@ -85,18 +85,20 @@ static int check_param_sfo(const unsigned char *param_sfo_buf, size_t buf_size)
     return 0;
 }
 
-static unsigned char *gen_key(char *content_id, char *passcode,
+static void gen_key(void *key, char *content_id, char *passcode,
     int index)
 {
     unsigned char index_buf[4] = { 0, 0, 0, index };
     unsigned char content_id_buf[48] = { 0 };
     memcpy(content_id_buf, content_id, strlen(content_id));
 
-    unsigned char *checksum1 = checksum_buf(EVP_sha256, index_buf, 4);
-    /* print_checksum(stdout, checksum1, EVP_sha256); */
+    unsigned char checksum1[32];
+    unsigned char checksum2[32];
+    sha256(checksum1, index_buf, sizeof(index_buf));
+    sha256(checksum2, content_id_buf, sizeof(content_id_buf));
+    /* print_checksum(stdout, checksum1, 32); */
     /* printf("\n"); */
-    unsigned char *checksum2 = checksum_buf(EVP_sha256, content_id_buf, 48);
-    /* print_checksum(stdout, checksum2, EVP_sha256); */
+    /* print_checksum(stdout, checksum2, 32); */
     /* printf("\n"); */
 
     unsigned char data[96];
@@ -104,30 +106,26 @@ static unsigned char *gen_key(char *content_id, char *passcode,
     memcpy(data + 32, checksum2, 32);
     memcpy(data + 64, passcode, 32);
 
-    OPENSSL_free(checksum1);
-    OPENSSL_free(checksum2);
-
-    return checksum_buf(EVP_sha256, data, 96);
+    sha256(key, data, sizeof(data));
 }
 
 static _Bool is_fake(char *content_id, unsigned char key_checksum[32])
 {
     static char *passcode = "00000000000000000000000000000000";
 
-    unsigned char *key = gen_key(content_id, passcode, 0);
-    unsigned char *checksum = checksum_buf(EVP_sha256, key, 32);
+    unsigned char key[32];
+    gen_key(key, content_id, passcode, 0);
+    unsigned char checksum[32];
+    sha256(checksum, key, sizeof(key));
     for (int i = 0; i < 32; i++)
         checksum[i] = key[i] ^ checksum[i];
-    OPENSSL_free(key);
 
     // Debug
-    /* print_checksum(stdout, key_checksum, EVP_sha256); */
-    /* print_checksum(stdout, checksum, EVP_sha256); */
+    /* print_checksum(stdout, key_checksum, 32); */
+    /* print_checksum(stdout, checksum, 32); */
     /* printf("\n"); */
 
     int ret = memcmp(checksum, key_checksum, 32);
-
-    OPENSSL_free(checksum);
 
     if (ret)
         return false;

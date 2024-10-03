@@ -190,6 +190,8 @@ static struct scan *pkgrename(struct scan *scan)
     char *category = NULL;
     char *content_id = NULL;
     char *dlc = NULL;
+    char *fake = NULL;
+    char *fake_status = NULL;
     char file_id_suffix[13] = "-A0000-V0000";
     char firmware[9] = "";
     char *game = NULL;
@@ -201,6 +203,7 @@ static struct scan *pkgrename(struct scan *scan)
     char *region = NULL;
     char *release_group = NULL;
     char *release = NULL;
+    char *retail = NULL;
     char sdk[6] = "";
     char size[10];
     char title[MAX_TITLE_LEN] = "";
@@ -361,6 +364,17 @@ title_found:
     if (option_leading_zeros == 0 && version[0] == '0')
         version++;
 
+    // Handle fake status.
+    if (scan->fake_status) {
+        fake = FAKE_STRING;
+        retail = "";
+        fake_status = FAKE_STRING;
+    } else {
+        fake = "";
+        retail = RETAIL_STRING;
+        fake_status = RETAIL_STRING;
+    }
+
     // Get compatibility checksum.
     if (strstr(format_string, "%msum%"))
         get_checksum(msum, filename);
@@ -381,11 +395,12 @@ title_found:
     if ((category && category[0] == 'g' && category[1] == 'p'
         && ((option_leading_zeros == 0 && strcmp(sdk, "5.05") == 0 )
         || (option_leading_zeros == 1 && strcmp(sdk, "05.05") == 0)))
+        || strstr(basename, BACKPORT_STRING)
         || strstr(lowercase_basename, "backport")
         || strwrd(lowercase_basename, "bp")
         || (changelog && changelog[0] ? strcasestr(changelog, "backport") : 0))
     {
-        backport = "Backport";
+        backport = BACKPORT_STRING;
     }
 
     // Detect releases.
@@ -398,7 +413,7 @@ title_found:
             if (n > 1) {
                 // Remove all tags but the 1st.
                 // Note: if there ever is demand, this line can be removed to
-                // automatically retreive all tags from the changelog. 
+                // automatically retreive all tags from the changelog.
                 *(strchr(release, ',')) = '\0';
 
                 if (! option_query)
@@ -458,6 +473,8 @@ title_found:
         strreplace(new_basename, "%backport%", backport);
         strreplace(new_basename, "%category%", category);
         strreplace(new_basename, "%content_id%", content_id);
+        strreplace(new_basename, "%fake%", fake);
+        strreplace(new_basename, "%fake_status%", fake_status);
         strreplace(new_basename, "%file_id_suffix%", file_id_suffix);
         strreplace(new_basename, "%firmware%", firmware);
         strreplace(new_basename, "%merged_ver%", merged_ver);
@@ -471,6 +488,7 @@ title_found:
             strreplace(new_basename, "%release%", tag_release);
         else
             strreplace(new_basename, "%release%", release);
+        strreplace(new_basename, "%retail%", retail);
         strreplace(new_basename, "%sdk%", sdk);
         if (strstr(format_string, "%size%"))
             strreplace(new_basename, "%size%", size);
@@ -720,7 +738,7 @@ title_found:
                         printf("Using \"%s\" as release group.\n", result);
                         strncpy(tag_release_group, result, MAX_TAG_LEN);
                         tag_release_group[MAX_TAG_LEN] = '\0';
-                    }          
+                    }
 
                     // Get entered known releases.
                     if ((n_results = get_release(&result, tag)) != 0) {
@@ -735,13 +753,13 @@ title_found:
                     char *tok = strtok(tag, ",");
                     while (tok) {
                         trim_string(tok, " ", " ");
-                        if (strcasecmp(tok, "Backport") == 0) {
+                        if (strcasecmp(tok, BACKPORT_STRING) == 0) {
                             if (backport) {
                                 printf("Backport tag disabled.\n");
                                 backport = NULL;
                             } else {
                                 printf("Backport tag enabled.\n");
-                                backport = "Backport";
+                                backport = BACKPORT_STRING;
                             }
                         } else {
                             if (tag_release_group[0]
@@ -750,7 +768,7 @@ title_found:
                                     printf("Cannot enter multiple release groups (\"%s\").\n", tok);
                             } else {
                                 // Make sure existing releases reset when a new
-                                // unknown tag was entered. 
+                                // unknown tag was entered.
                                 if (unknown_tag_entered == 0) {
                                     unknown_tag_entered = 1;
                                     if (n_results == 0)
@@ -793,7 +811,7 @@ title_found:
                                             // Reached the end -> append.
                                             if (*next_tag_end == '\0') {
                                                 size_t len = strlen(tag_release);
-                                                snprintf(tag_release + len, MAX_TAG_LEN - len, ",%s", tok); 
+                                                snprintf(tag_release + len, MAX_TAG_LEN - len, ",%s", tok);
                                                 break;
                                             }
 
@@ -890,7 +908,7 @@ title_found:
                     backport = NULL;
                     printf("\nBackport tag disabled.\n\n");
                 } else {
-                    backport = "Backport";
+                    backport = BACKPORT_STRING;
                     printf("\nBackport tag enabled.\n\n");
                 }
                 break;
