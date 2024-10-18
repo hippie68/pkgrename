@@ -395,7 +395,7 @@ title_found:
     if ((category && category[0] == 'g' && category[1] == 'p'
         && ((option_leading_zeros == 0 && strcmp(sdk, "5.05") == 0 )
         || (option_leading_zeros == 1 && strcmp(sdk, "05.05") == 0)))
-        || strstr(basename, BACKPORT_STRING)
+        || strwrd(basename, BACKPORT_STRING)
         || strstr(lowercase_basename, "backport")
         || strwrd(lowercase_basename, "bp")
         || (changelog && changelog[0] ? strcasestr(changelog, "backport") : 0))
