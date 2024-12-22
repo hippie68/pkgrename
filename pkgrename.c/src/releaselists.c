@@ -162,18 +162,12 @@ int get_release(char **release, const char *string)
     } else if (n_found > 1) {
         // Return multiple releases as a comma-separated string.
         qsort(found, n_found, sizeof(char *), compar_func);
-        size_t len = strlen(found[0]);
-        for (int i = 1; i < n_found; i++)
-            len += strlen(found[i]) + strlen(tag_separator);
-        char *new_retval = realloc(retval, len + strlen(tag_separator));
-        if (new_retval == NULL)
-            exit(EXIT_FAILURE);
-        retval = new_retval;
-        retval[0] = '\0';
-        strcpy(retval, found[0]);
+        if (retval == NULL)
+            retval = calloc(MAX_TAG_LEN, 1);
+        strncpy(retval, found[0], MAX_TAG_LEN);
         for (int i = 1; i < n_found; i++) {
-            strcat(retval, tag_separator);
-            strcat(retval, found[i]);
+            strncat(retval, tag_separator, MAX_TAG_LEN - strlen(retval));
+            strncat(retval, found[i], MAX_TAG_LEN - strlen(retval));
         }
         *release = retval;
     }
@@ -245,14 +239,15 @@ void replace_commas_in_tag(char *tag, const char *string)
     size_t taglen = strlen(tag); // Initial length
     size_t stringlen = strlen(string);
 
-    for (size_t i = 0; i < taglen; i++) {
+    for (size_t i = 0; i < strlen(tag); i++) {
         if (tag[i] == ',') {
             // Only do it if there's enough space left in the tag buffer.
-            if (strlen(tag) + stringlen + 1 >= MAX_TAG_LEN)
+            if (strlen(tag) + stringlen - 1 >= MAX_TAG_LEN)
                 return;
 
-            memmove(tag + i + stringlen, tag + i + 1, strlen(tag + i + 1));
+            memmove(tag + i + stringlen, tag + i + 1, strlen(tag + i));
             memcpy(tag + i, string, stringlen);
+            i += stringlen;
         }
     }
 }

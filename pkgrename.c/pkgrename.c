@@ -687,8 +687,12 @@ title_found:
                 putchar('\n');
                 return scan;
             }
-        } while (strchr("ynaetmorcslhqbpT", c) == NULL);
+        } while (strchr("ynaAetmorcslhqbpT", c) == NULL);
         printf("%c\n", c);
+
+        static int a_primed;
+        if (c != 'a' && c != 'A')
+            a_primed = 0;
 
         // Evaluate user input,
         switch (c) {
@@ -698,9 +702,22 @@ title_found:
             case 'n': // [No]: skip file
                 goto exit;
             case 'a': // [A]ll: rename files automatically.
-                option_yes_to_all = 1;
-                rename_file(filename, new_basename, path);
-                goto exit;
+                a_primed = 1;
+                set_color(BRIGHT_YELLOW, stdout);
+                puts("\nPress Shift-[A] now if you really want to automatically rename all remaining files.\n");
+                set_color(RESET, stdout);
+                break;
+            case 'A':
+                if (a_primed) {
+                    option_yes_to_all = 1;
+                    rename_file(filename, new_basename, path);
+                    goto exit;
+                } else {
+                    set_color(BRIGHT_YELLOW, stdout);
+                    puts("\nPress [A] to unlock this command.\n");
+                    set_color(RESET, stdout);
+                }
+                break;
             case 'e': // [E]dit: let user manually enter a new title.
                 ;
                 char backup[MAX_TITLE_LEN];
