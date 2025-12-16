@@ -236,7 +236,6 @@ char *get_tag(char *string)
 // The buffer <tag> is stored in must be of length MAX_TAG_LEN.
 void replace_commas_in_tag(char *tag, const char *string)
 {
-    size_t taglen = strlen(tag); // Initial length
     size_t stringlen = strlen(string);
 
     for (size_t i = 0; i < strlen(tag); i++) {
